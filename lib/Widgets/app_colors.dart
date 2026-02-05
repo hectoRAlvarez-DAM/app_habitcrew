@@ -4,7 +4,6 @@ class AppColors {
   // Colores principales inspirados en Duolingo
   static const Color primary = Color(0xFF58CC02); // Verde Duolingo
   static const Color primaryLight = Color(0xFF7CFF33);
-  static const Color primaryDark = Color(0xFF1CB0F6); // Azul para degradados
   
   // Colores de acento
   static const Color accentGreen = Color(0xFF5BCE00);
@@ -45,12 +44,6 @@ class AppColors {
   ];
   
   // Degradados
-  static LinearGradient get primaryGradient => LinearGradient(
-    colors: [primaryLight, primary],
-    begin: Alignment.topLeft,
-    end: Alignment.bottomRight,
-  );
-  
   static LinearGradient get buttonGradient => LinearGradient(
     colors: [accentGreen, primary],
     begin: Alignment.centerLeft,
@@ -63,52 +56,9 @@ class AppColors {
     end: Alignment.bottomRight,
   );
   
-  // AÑADE ESTE GRADIENTE QUE FALTA:
   static LinearGradient get purpleBlueGradient => LinearGradient(
     colors: [accentPurple, accentBlue],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );
-  
-  static LinearGradient get backgroundGradient => LinearGradient(
-    colors: [
-      Color(0xFFF7F9FC).withOpacity(0.8),
-      Color(0xFFE3F2FD).withOpacity(0.6),
-    ],
-    begin: Alignment.topCenter,
-    end: Alignment.bottomCenter,
-  );
-  
-  static LinearGradient get cardGradient => LinearGradient(
-    colors: [
-      Colors.white.withOpacity(0.9),
-      Colors.white.withOpacity(0.7),
-    ],
-    begin: Alignment.topLeft,
-    end: Alignment.bottomRight,
-  );
-  
-  static LinearGradient get accentButtonGradient => LinearGradient(
-    colors: [accentPurple, accentBlue],
-    begin: Alignment.topLeft,
-    end: Alignment.bottomRight,
-  );
-  
-  static List<BoxShadow> get softShadow => [
-    BoxShadow(
-      color: shadow,
-      blurRadius: 20.0,
-      spreadRadius: 0.0,
-      offset: const Offset(0, 8),
-    ),
-  ];
-  
-  static List<BoxShadow> get buttonShadow => [
-    BoxShadow(
-      color: primary.withOpacity(0.3),
-      blurRadius: 15.0,
-      spreadRadius: 2.0,
-      offset: const Offset(0, 5),
-    ),
-  ];
 }

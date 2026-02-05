@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'app_colors.dart';
+import 'responsive_utils.dart';
 
-class DuolingoTextField extends StatefulWidget {
+class DuolingoTextField extends StatelessWidget {
   final TextEditingController controller;
   final String labelText;
   final String? hintText;
@@ -12,12 +13,9 @@ class DuolingoTextField extends StatefulWidget {
   final String? Function(String?)? validator;
   final void Function(String)? onChanged;
   final bool enabled;
-  final bool autoFocus;
-  final TextInputAction? textInputAction;
-  final void Function(String)? onSubmitted;
 
   const DuolingoTextField({
-    Key? key,
+    super.key,
     required this.controller,
     required this.labelText,
     this.hintText,
@@ -28,124 +26,128 @@ class DuolingoTextField extends StatefulWidget {
     this.validator,
     this.onChanged,
     this.enabled = true,
-    this.autoFocus = false,
-    this.textInputAction,
-    this.onSubmitted,
-  }) : super(key: key);
-
-  @override
-  _DuolingoTextFieldState createState() => _DuolingoTextFieldState();
-}
-
-class _DuolingoTextFieldState extends State<DuolingoTextField> {
-  bool _isFocused = false;
+  });
 
   @override
   Widget build(BuildContext context) {
+    final isMobile = ResponsiveUtils.isMobile(context);
+    final isLandscape = ResponsiveUtils.isLandscape(context);
+    
+    // Tamaños responsivos
+    double fontSize;
+    double labelFontSize;
+    double iconSize;
+    double borderRadius;
+    EdgeInsets contentPadding;
+    
+    if (isMobile) {
+      fontSize = isLandscape ? 14.0 : 16.0;
+      labelFontSize = isLandscape ? 12.0 : 14.0;
+      iconSize = isLandscape ? 18.0 : 20.0;
+      borderRadius = 12.0;
+      contentPadding = EdgeInsets.symmetric(
+        horizontal: isLandscape ? 12.0 : 16.0,
+        vertical: isLandscape ? 10.0 : 14.0,
+      );
+    } else if (ResponsiveUtils.isTablet(context)) {
+      fontSize = isLandscape ? 16.0 : 18.0;
+      labelFontSize = 14.0;
+      iconSize = 22.0;
+      borderRadius = 14.0;
+      contentPadding = EdgeInsets.symmetric(horizontal: 16.0, vertical: 16.0);
+    } else {
+      fontSize = 18.0;
+      labelFontSize = 16.0;
+      iconSize = 24.0;
+      borderRadius = 16.0;
+      contentPadding = EdgeInsets.symmetric(horizontal: 20.0, vertical: 18.0);
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Label con animación
-        AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          padding: const EdgeInsets.only(left: 12.0),
-          child: Text(
-            widget.labelText,
-            style: TextStyle(
-              color: _isFocused ? AppColors.primary : AppColors.textSecondary,
-              fontSize: 14.0,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 0.5,
-            ),
+        // Label con color visible
+        Text(
+          labelText,
+          style: TextStyle(
+            color: AppColors.textSecondary,
+            fontSize: labelFontSize,
+            fontWeight: FontWeight.w600,
           ),
         ),
         
-        const SizedBox(height: 8.0),
+        const SizedBox(height: 6.0),
         
-        // Campo de texto con efectos
+        // Campo de texto con colores visibles
         Container(
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16.0),
-            gradient: _isFocused ? AppColors.cardGradient : null,
-            color: !_isFocused ? AppColors.backgroundGrey : null,
-            boxShadow: _isFocused ? AppColors.softShadow : [
+            borderRadius: BorderRadius.circular(borderRadius),
+            color: AppColors.backgroundGrey,
+            boxShadow: [
               BoxShadow(
                 color: AppColors.shadow,
                 blurRadius: 4.0,
                 offset: const Offset(0, 2),
               ),
             ],
-            border: _isFocused ? Border.all(
-              color: AppColors.primary.withOpacity(0.3),
-              width: 2.0,
-            ) : null,
           ),
-          child: Focus(
-            onFocusChange: (focused) {
-              setState(() {
-                _isFocused = focused;
-              });
-            },
-            child: TextFormField(
-              controller: widget.controller,
-              obscureText: widget.obscureText,
-              keyboardType: widget.keyboardType,
-              validator: widget.validator,
-              onChanged: widget.onChanged,
-              enabled: widget.enabled,
-              autofocus: widget.autoFocus,
-              textInputAction: widget.textInputAction,
-              onFieldSubmitted: widget.onSubmitted,
-              style: TextStyle(
-                color: widget.enabled ? AppColors.textPrimary : AppColors.textLight,
-                fontSize: 16.0,
-                fontWeight: FontWeight.w600,
-                letterSpacing: 0.3,
+          child: TextFormField(
+            controller: controller,
+            obscureText: obscureText,
+            keyboardType: keyboardType,
+            validator: validator,
+            onChanged: onChanged,
+            enabled: enabled,
+            style: TextStyle(
+              color: enabled ? AppColors.textPrimary : AppColors.textLight,
+              fontSize: fontSize,
+              fontWeight: FontWeight.w500,
+            ),
+            decoration: InputDecoration(
+              hintText: hintText,
+              hintStyle: TextStyle(
+                color: AppColors.textLight,
+                fontSize: fontSize,
               ),
-              decoration: InputDecoration(
-                hintText: widget.hintText,
-                hintStyle: TextStyle(
-                  color: AppColors.textLight,
-                  fontSize: 16.0,
-                  fontWeight: FontWeight.w500,
-                ),
-                filled: true,
-                fillColor: Colors.transparent,
-                prefixIcon: widget.prefixIcon != null
-                    ? Padding(
-                        padding: const EdgeInsets.only(left: 16.0, right: 12.0),
-                        child: Icon(
-                          widget.prefixIcon,
-                          color: _isFocused ? AppColors.primary : AppColors.textLight,
-                          size: 22.0,
-                        ),
-                      )
-                    : null,
-                suffixIcon: widget.suffixIcon,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(16.0),
-                  borderSide: BorderSide.none,
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(16.0),
-                  borderSide: BorderSide.none,
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(16.0),
-                  borderSide: BorderSide.none,
-                ),
-                errorBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(16.0),
-                  borderSide: BorderSide(
-                    color: AppColors.error,
-                    width: 2.0,
-                  ),
-                ),
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 20.0,
-                  vertical: 18.0,
+              filled: true,
+              fillColor: Colors.transparent,
+              prefixIcon: prefixIcon != null
+                  ? Padding(
+                      padding: EdgeInsets.only(
+                        left: isMobile ? 12.0 : 16.0,
+                        right: isMobile ? 8.0 : 12.0,
+                      ),
+                      child: Icon(
+                        prefixIcon,
+                        color: enabled ? AppColors.primary : AppColors.textLight,
+                        size: iconSize,
+                      ),
+                    )
+                  : null,
+              suffixIcon: suffixIcon,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(borderRadius),
+                borderSide: BorderSide.none,
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(borderRadius),
+                borderSide: BorderSide.none,
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(borderRadius),
+                borderSide: BorderSide(
+                  color: AppColors.primary,
+                  width: 2.0,
                 ),
               ),
+              errorBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(borderRadius),
+                borderSide: BorderSide(
+                  color: AppColors.error,
+                  width: 1.5,
+                ),
+              ),
+              contentPadding: contentPadding,
             ),
           ),
         ),

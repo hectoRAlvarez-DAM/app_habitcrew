@@ -1,50 +1,40 @@
 import 'package:flutter/material.dart';
+import 'dart:ui';
 import '../widgets/app_colors.dart';
 import '../widgets/duolingo_button.dart';
 import '../widgets/duolingo_logo.dart';
 import '../widgets/duolingo_textfield.dart';
+import '../widgets/responsive_utils.dart';
 
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({Key? key}) : super(key: key);
+  const LoginScreen({super.key});
 
   @override
-  _LoginScreenState createState() => _LoginScreenState();
+  State<LoginScreen> createState() => _LoginScreenState();
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  // Controladores para los campos de texto
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController _usernameController = TextEditingController();
-  
   final _formKey = GlobalKey<FormState>();
   
-  // Variables de estado
   bool _isLoading = false;
   bool _isLoginMode = true;
   bool _obscurePassword = true;
 
-  // Validar formulario
   String? _validateEmail(String? value) {
-    if (value == null || value.isEmpty) {
-      return 'Ingresa tu correo electrónico';
-    }
+    if (value == null || value.isEmpty) return 'Ingresa tu correo';
     if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) {
-      return 'Correo electrónico inválido';
+      return 'Correo inválido';
     }
     return null;
   }
 
   String? _validatePassword(String? value) {
-    if (value == null || value.isEmpty) {
-      return 'Ingresa tu contraseña';
-    }
-    if (!_isLoginMode && value.length < 8) {
-      return 'Mínimo 8 caracteres';
-    }
-    if (_isLoginMode && value.length < 6) {
-      return 'Mínimo 6 caracteres';
-    }
+    if (value == null || value.isEmpty) return 'Ingresa tu contraseña';
+    if (!_isLoginMode && value.length < 8) return 'Mínimo 8 caracteres';
+    if (_isLoginMode && value.length < 6) return 'Mínimo 6 caracteres';
     return null;
   }
 
@@ -52,576 +42,429 @@ class _LoginScreenState extends State<LoginScreen> {
     if (!_isLoginMode && (value == null || value.isEmpty)) {
       return 'Ingresa un nombre de usuario';
     }
-    if (!_isLoginMode && value != null && value.length < 3) {
-      return 'Mínimo 3 caracteres';
-    }
-    if (!_isLoginMode && value != null && !RegExp(r'^[a-zA-Z0-9_]+$').hasMatch(value)) {
-      return 'Solo letras, números y guiones bajos';
-    }
     return null;
   }
 
-  // Manejar login/registro
   Future<void> _handleSubmit() async {
     if (_formKey.currentState!.validate()) {
-      setState(() {
-        _isLoading = true;
-      });
-
-      // Simular llamada a API
+      if (!mounted) return;
+      
+      setState(() => _isLoading = true);
       await Future.delayed(const Duration(seconds: 2));
-
-      setState(() {
-        _isLoading = false;
-      });
-
-      _showSuccessMessage(
-        _isLoginMode
-            ? '¡Bienvenido de nuevo, ${_usernameController.text.isNotEmpty ? _usernameController.text : 'amigo'}! 🎉'
-            : '¡Cuenta creada exitosamente! 🚀\nBienvenido a Habit Crew, ${_usernameController.text}!',
+      
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            _isLoginMode ? '¡Bienvenido! 🎉' : '¡Cuenta creada! 🚀',
+            style: const TextStyle(color: AppColors.textWhite),
+          ),
+          backgroundColor: AppColors.success,
+        ),
       );
     }
   }
 
-  // Cambiar entre login y registro
   void _toggleMode() {
-    setState(() {
-      _isLoginMode = !_isLoginMode;
-    });
-  }
-
-  // Mostrar mensaje de éxito
-  void _showSuccessMessage(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            Icon(
-              Icons.check_circle,
-              color: AppColors.textWhite,
-              size: 20.0,
-            ),
-            const SizedBox(width: 12.0),
-            Expanded(
-              child: Text(
-                message,
-                style: TextStyle(
-                  color: AppColors.textWhite,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-          ],
-        ),
-        backgroundColor: AppColors.success,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12.0),
-        ),
-        duration: const Duration(seconds: 3),
-        elevation: 6.0,
-      ),
-    );
-  }
-
-  // Manejar recuperación de contraseña
-  void _handleForgotPassword() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: Colors.white,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20.0),
-        ),
-        title: Row(
-          children: [
-            Icon(
-              Icons.email,
-              color: AppColors.primary,
-              size: 24.0,
-            ),
-            const SizedBox(width: 12.0),
-            Text(
-              'Recuperar Contraseña',
-              style: TextStyle(
-                color: AppColors.textPrimary,
-                fontWeight: FontWeight.w800,
-                fontSize: 18.0,
-              ),
-            ),
-          ],
-        ),
-        content: Text(
-          'Te enviaremos un enlace para restablecer tu contraseña a tu correo electrónico.',
-          style: TextStyle(
-            color: AppColors.textSecondary,
-            fontSize: 14.0,
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text(
-              'Cancelar',
-              style: TextStyle(
-                color: AppColors.textLight,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              _showSuccessMessage('¡Enlace enviado! Revisa tu correo 📧');
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primary,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16.0),
-              ),
-              padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 12.0),
-            ),
-            child: Text(
-              'Enviar',
-              style: TextStyle(
-                color: AppColors.textWhite,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
+    setState(() => _isLoginMode = !_isLoginMode);
   }
 
   @override
   Widget build(BuildContext context) {
+    final isMobile = ResponsiveUtils.isMobile(context);
+    final isTablet = ResponsiveUtils.isTablet(context);
+    final isDesktop = ResponsiveUtils.isDesktop(context);
+    final isLandscape = ResponsiveUtils.isLandscape(context);
+    
+    // Variables responsivas
+    double screenPadding;
+    double spacing;
+    double titleFontSize;
+    double subtitleFontSize;
+    double maxCardWidth;
+    double formWidth;
+    
+    if (isMobile) {
+      screenPadding = isLandscape ? 12.0 : 16.0;
+      spacing = isLandscape ? 12.0 : 16.0;
+      titleFontSize = isLandscape ? 20.0 : 24.0;
+      subtitleFontSize = isLandscape ? 14.0 : 16.0;
+      maxCardWidth = isLandscape ? 400.0 : double.infinity;
+      formWidth = isLandscape ? 350.0 : double.infinity;
+    } else if (isTablet) {
+      screenPadding = isLandscape ? 20.0 : 24.0;
+      spacing = isLandscape ? 16.0 : 20.0;
+      titleFontSize = isLandscape ? 24.0 : 28.0;
+      subtitleFontSize = isLandscape ? 16.0 : 18.0;
+      maxCardWidth = isLandscape ? 450.0 : 400.0;
+      formWidth = isLandscape ? 400.0 : 350.0;
+    } else {
+      // Para desktop/web: más padding y tamaño
+      screenPadding = 32.0;
+      spacing = 24.0;
+      titleFontSize = 32.0;
+      subtitleFontSize = 20.0;
+      maxCardWidth = 500.0;
+      formWidth = 450.0;
+    }
+
     return Scaffold(
       body: Container(
+        width: double.infinity,
+        height: double.infinity,
         decoration: BoxDecoration(
-          gradient: LinearGradient(
+          gradient: RadialGradient(
+            center: Alignment.center,
+            radius: 1.2,
             colors: [
-              AppColors.background,
-              AppColors.backgroundLight,
+              const Color(0xFFE8F5E9), // Verde muy claro en los bordes
+              const Color(0xFFC8E6C9), // Verde claro intermedio
+              const Color(0xFFA5D6A7), // Verde medio
+              const Color(0xFFFFFFFF).withOpacity(0.95), // Centro blanco (95% opacidad)
+              const Color(0xFFFFFFFF), // Centro completamente blanco
             ],
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
+            stops: const [0.0, 0.3, 0.6, 0.85, 1.0],
           ),
         ),
-        child: SingleChildScrollView(
-          physics: const BouncingScrollPhysics(),
-          padding: const EdgeInsets.all(24.0),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                const SizedBox(height: 40.0),
-                
-                // Logo con animación
-                Hero(
-                  tag: 'app-logo',
-                  child: DuolingoLogo(
-                    size: 120.0,
-                    withText: true,
+        child: Stack(
+          children: [
+            // Elementos decorativos sutiles en los bordes
+            Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              child: Container(
+                height: 100,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      const Color(0xFF81C784).withOpacity(0.3),
+                      Colors.transparent,
+                    ],
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
                   ),
                 ),
-                
-                const SizedBox(height: 40.0),
-                
-                // Tarjeta principal con efecto de elevación
-                Material(
-                  elevation: 8.0,
-                  borderRadius: BorderRadius.circular(24.0),
-                  child: Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(32.0),
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [
-                          Colors.white.withOpacity(0.9),
-                          Colors.white.withOpacity(0.7),
-                        ],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
+              ),
+            ),
+            
+            Positioned(
+              bottom: 0,
+              left: 0,
+              right: 0,
+              child: Container(
+                height: 100,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      Colors.transparent,
+                      const Color(0xFF81C784).withOpacity(0.3),
+                    ],
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                  ),
+                ),
+              ),
+            ),
+            
+            // Contenido principal CENTRADO
+            Center(
+              child: Container(
+                constraints: BoxConstraints(
+                  maxWidth: isDesktop ? 1200.0 : double.infinity,
+                ),
+                child: SafeArea(
+                  child: Form(
+                    key: _formKey,
+                    child: Container(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: screenPadding,
+                        vertical: isDesktop ? 40.0 : screenPadding,
                       ),
-                      borderRadius: BorderRadius.circular(24.0),
-                      border: Border.all(
-                        color: Colors.white.withOpacity(0.5),
-                        width: 1.0,
-                      ),
-                    ),
-                    child: Column(
-                      children: [
-                        // Título animado
-                        AnimatedSwitcher(
-                          duration: const Duration(milliseconds: 300),
-                          child: _isLoginMode
-                              ? Column(
-                                  key: const ValueKey('login-title'),
-                                  children: [
-                                    Text(
-                                      '¡Hola de Nuevo! 👋',
-                                      style: TextStyle(
-                                        fontSize: 28.0,
-                                        fontWeight: FontWeight.w900,
-                                        color: AppColors.textPrimary,
-                                        letterSpacing: 0.5,
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          // Logo - más arriba en desktop
+                          if (isDesktop) SizedBox(height: spacing),
+                          DuolingoLogo(
+                            withText: !isMobile || isLandscape || isDesktop,
+                          ),
+                          
+                          SizedBox(height: spacing),
+                          
+                          // Contenedor del formulario
+                          Container(
+                            constraints: BoxConstraints(maxWidth: maxCardWidth),
+                            width: double.infinity,
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                // Título con colores de la paleta
+                                Text(
+                                  _isLoginMode ? '¡Hola de Nuevo! 👋' : '¡Únete a Nosotros! 🚀',
+                                  style: TextStyle(
+                                    fontSize: titleFontSize,
+                                    fontWeight: FontWeight.w900,
+                                    color: Colors.black87,
+                                    shadows: [
+                                      Shadow(
+                                        color: Colors.white.withOpacity(0.78),
+                                        blurRadius: 10,
+                                        offset: const Offset(2, 2),
                                       ),
-                                    ),
-                                    const SizedBox(height: 8.0),
-                                    Text(
-                                      'Inicia sesión para continuar tu viaje',
-                                      style: TextStyle(
-                                        fontSize: 16.0,
-                                        color: AppColors.textSecondary,
-                                        fontWeight: FontWeight.w500,
-                                      ),
-                                    ),
-                                  ],
-                                )
-                              : Column(
-                                  key: const ValueKey('register-title'),
-                                  children: [
-                                    Text(
-                                      '¡Únete a la Tripulación! 🚀',
-                                      style: TextStyle(
-                                        fontSize: 28.0,
-                                        fontWeight: FontWeight.w900,
-                                        color: AppColors.textPrimary,
-                                        letterSpacing: 0.5,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 8.0),
-                                    Text(
-                                      'Crea tu cuenta y empieza ahora',
-                                      style: TextStyle(
-                                        fontSize: 16.0,
-                                        color: AppColors.textSecondary,
-                                        fontWeight: FontWeight.w500,
-                                      ),
-                                    ),
-                                  ],
+                                    ],
+                                  ),
+                                  textAlign: TextAlign.center,
                                 ),
-                        ),
-                        
-                        const SizedBox(height: 32.0),
-                        
-                        // Campo de nombre de usuario (solo en registro)
-                        AnimatedSize(
-                          duration: const Duration(milliseconds: 300),
-                          curve: Curves.easeInOut,
-                          child: SizedBox(
-                            height: _isLoginMode ? 0 : null,
-                            child: Opacity(
-                              opacity: _isLoginMode ? 0 : 1,
-                              child: DuolingoTextField(
-                                controller: _usernameController,
-                                labelText: 'Nombre de Usuario',
-                                hintText: 'ejemplo_usuario',
-                                prefixIcon: Icons.person_rounded,
-                                validator: _validateUsername,
-                              ),
+                                
+                                SizedBox(height: spacing * 0.5),
+                                
+                                // Subtítulo con color de la paleta
+                                Text(
+                                  _isLoginMode ? 'Inicia sesión para continuar' : 'Crea tu cuenta y empieza',
+                                  style: TextStyle(
+                                    fontSize: subtitleFontSize,
+                                    color: Colors.black54,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                                
+                                SizedBox(height: spacing * 1.5),
+                                
+                                // Contenedor del formulario con ancho fijo
+                                Container(
+                                  width: formWidth,
+                                  child: Column(
+                                    children: [
+                                      // Campo de usuario solo en registro
+                                      if (!_isLoginMode) ...[
+                                        DuolingoTextField(
+                                          controller: _usernameController,
+                                          labelText: 'Nombre de Usuario',
+                                          hintText: 'ejemplo_usuario',
+                                          prefixIcon: Icons.person,
+                                          validator: _validateUsername,
+                                        ),
+                                        SizedBox(height: spacing),
+                                      ],
+                                      
+                                      // Email
+                                      DuolingoTextField(
+                                        controller: _emailController,
+                                        labelText: 'Correo Electrónico',
+                                        hintText: 'tucorreo@ejemplo.com',
+                                        prefixIcon: Icons.email,
+                                        validator: _validateEmail,
+                                      ),
+                                      
+                                      SizedBox(height: spacing),
+                                      
+                                      // Contraseña
+                                      DuolingoTextField(
+                                        controller: _passwordController,
+                                        labelText: 'Contraseña',
+                                        hintText: '••••••••',
+                                        prefixIcon: Icons.lock,
+                                        obscureText: _obscurePassword,
+                                        validator: _validatePassword,
+                                        suffixIcon: IconButton(
+                                          icon: Icon(
+                                            _obscurePassword
+                                                ? Icons.visibility_off
+                                                : Icons.visibility,
+                                            color: const Color(0xFF757575), // Gris medio fijo
+                                          ),
+                                          onPressed: () {
+                                            setState(() => _obscurePassword = !_obscurePassword);
+                                          },
+                                        ),
+                                      ),
+                                      
+                                      // Enlace de recuperación (solo login)
+                                      if (_isLoginMode) ...[
+                                        SizedBox(height: spacing * 0.5),
+                                        Align(
+                                          alignment: Alignment.centerRight,
+                                          child: Container(
+                                            decoration: BoxDecoration(
+                                              borderRadius: BorderRadius.circular(20),
+                                            ),
+                                            child: GestureDetector(
+                                              onTap: () {
+                                                ScaffoldMessenger.of(context).showSnackBar(
+                                                  SnackBar(
+                                                    content: const Text('Recuperación de contraseña'),
+                                                    backgroundColor: const Color(0xFF4CAF50),
+                                                  ),
+                                                );
+                                              },
+                                              child: Padding(
+                                                padding: const EdgeInsets.symmetric(
+                                                  horizontal: 12,
+                                                  vertical: 6,
+                                                ),
+                                                child: Text(
+                                                  '¿Olvidaste tu contraseña?',
+                                                  style: TextStyle(
+                                                    color: const Color(0xFF2E7D32),
+                                                    fontSize: isMobile ? 12.0 : 14.0,
+                                                    fontWeight: FontWeight.w700,
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                      
+                                      SizedBox(height: spacing * 1.5),
+                                      
+                                      // Botón principal - Verde más brillante
+                                      Container(
+                                        decoration: BoxDecoration(
+                                          borderRadius: BorderRadius.circular(20),
+                                          boxShadow: [
+                                            BoxShadow(
+                                              color: const Color(0xFF4CAF50).withOpacity(0.6),
+                                              blurRadius: 20,
+                                              spreadRadius: 2,
+                                              offset: const Offset(0, 8),
+                                            ),
+                                          ],
+                                        ),
+                                        child: DuolingoButton(
+                                          text: _isLoginMode ? 'Iniciar Sesión' : 'Crear Cuenta',
+                                          onPressed: _handleSubmit,
+                                          isLoading: _isLoading,
+                                          backgroundColor: const Color(0xFF4CAF50), // Verde brillante
+                                        ),
+                                      ),
+                                      
+                                      SizedBox(height: spacing),
+                                      
+                                      // Botón alternativo - Verde más oscuro
+                                      Container(
+                                        decoration: BoxDecoration(
+                                          borderRadius: BorderRadius.circular(20),
+                                          border: Border.all(
+                                            color: const Color(0xFF388E3C),
+                                            width: 2,
+                                          ),
+                                          boxShadow: [
+                                            BoxShadow(
+                                              color: const Color(0xFF388E3C).withOpacity(0.3),
+                                              blurRadius: 15,
+                                              spreadRadius: 1,
+                                              offset: const Offset(0, 5),
+                                            ),
+                                          ],
+                                        ),
+                                        child: DuolingoButton(
+                                          text: _isLoginMode
+                                              ? 'Crear Nueva Cuenta'
+                                              : 'Ya tengo una cuenta',
+                                          onPressed: _toggleMode,
+                                          backgroundColor: Colors.white,
+                                          textColor: const Color(0xFF388E3C),
+                                          isGradient: false,
+                                          isOutlined: true,
+                                        ),
+                                      ),
+                                      
+                                      // Términos y condiciones
+                                      Padding(
+                                        padding: EdgeInsets.only(top: spacing),
+                                        child: Container(
+                                          padding: EdgeInsets.all(isMobile ? 12.0 : 16.0),
+                                          decoration: BoxDecoration(
+                                            color: const Color(0xFFFAFAFA), // Gris muy claro
+                                            borderRadius: BorderRadius.circular(16.0),
+                                            border: Border.all(
+                                              color: const Color(0xFFEEEEEE), // Gris claro
+                                              width: 1.0,
+                                            ),
+                                          ),
+                                          child: Column(
+                                            children: [
+                                              Row(
+                                                mainAxisAlignment: MainAxisAlignment.center,
+                                                children: [
+                                                  Icon(
+                                                    Icons.shield,
+                                                    color: const Color(0xFF4CAF50),
+                                                    size: isMobile ? 14.0 : 16.0,
+                                                  ),
+                                                  SizedBox(width: isMobile ? 6.0 : 8.0),
+                                                  Text(
+                                                    'Seguro y Confiable',
+                                                    style: TextStyle(
+                                                      color: Colors.black54,
+                                                      fontSize: isMobile ? 11.0 : 12.0,
+                                                      fontWeight: FontWeight.w700,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                              SizedBox(height: isMobile ? 4.0 : 6.0),
+                                              Text(
+                                                'Al continuar, aceptas nuestros Términos y Política de Privacidad',
+                                                textAlign: TextAlign.center,
+                                                style: TextStyle(
+                                                  color: const Color(0xFF757575), // Gris medio
+                                                  fontSize: isMobile ? 9.0 : 10.0,
+                                                  fontWeight: FontWeight.w500,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
-                        ),
-                        
-                        if (!_isLoginMode) const SizedBox(height: 20.0),
-                        
-                        // Campo de email
-                        DuolingoTextField(
-                          controller: _emailController,
-                          labelText: 'Correo Electrónico',
-                          hintText: 'tucorreo@ejemplo.com',
-                          prefixIcon: Icons.email_rounded,
-                          keyboardType: TextInputType.emailAddress,
-                          validator: _validateEmail,
-                        ),
-                        
-                        const SizedBox(height: 20.0),
-                        
-                        // Campo de contraseña con toggle
-                        DuolingoTextField(
-                          controller: _passwordController,
-                          labelText: 'Contraseña',
-                          hintText: '••••••••',
-                          prefixIcon: Icons.lock_rounded,
-                          obscureText: _obscurePassword,
-                          validator: _validatePassword,
-                          suffixIcon: IconButton(
-                            icon: Icon(
-                              _obscurePassword
-                                  ? Icons.visibility_off_rounded
-                                  : Icons.visibility_rounded,
-                              color: AppColors.textLight,
-                            ),
-                            onPressed: () {
-                              setState(() {
-                                _obscurePassword = !_obscurePassword;
-                              });
-                            },
-                          ),
-                        ),
-                        
-                        if (_isLoginMode) ...[
-                          const SizedBox(height: 16.0),
-                          // Enlace de recuperación de contraseña
-                          Align(
-                            alignment: Alignment.centerRight,
-                            child: GestureDetector(
-                              onTap: _handleForgotPassword,
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 16.0,
-                                  vertical: 8.0,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: AppColors.accentOrange.withOpacity(0.1),
-                                  borderRadius: BorderRadius.circular(20.0),
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(
-                                      Icons.help_outline,
-                                      color: AppColors.accentOrange,
-                                      size: 16.0,
-                                    ),
-                                    const SizedBox(width: 6.0),
-                                    Text(
-                                      '¿Olvidaste tu contraseña?',
-                                      style: TextStyle(
-                                        color: AppColors.accentOrange,
-                                        fontSize: 14.0,
-                                        fontWeight: FontWeight.w700,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                        
-                        const SizedBox(height: 32.0),
-                        
-                        // Botón principal
-                        DuolingoButton(
-                          text: _isLoginMode ? 'Iniciar Sesión' : 'Crear Cuenta',
-                          onPressed: _handleSubmit,
-                          isLoading: _isLoading,
-                          padding: const EdgeInsets.symmetric(vertical: 18.0),
-                        ),
-                        
-                        const SizedBox(height: 24.0),
-                        
-                        // Separador
-                        Row(
-                          children: [
-                            Expanded(
-                              child: Divider(
-                                color: AppColors.border.withOpacity(0.5),
-                                thickness: 1.0,
-                              ),
-                            ),
-                            Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                              child: Text(
-                                'O',
-                                style: TextStyle(
-                                  color: AppColors.textLight,
-                                  fontWeight: FontWeight.w700,
-                                  fontSize: 14.0,
-                                ),
-                              ),
-                            ),
-                            Expanded(
-                              child: Divider(
-                                color: AppColors.border.withOpacity(0.5),
-                                thickness: 1.0,
-                              ),
+                          
+                          // Elementos decorativos para desktop
+                          if (isDesktop) ...[
+                            SizedBox(height: spacing * 2),
+                            // Puntos de colores verdes decorativos
+                            Wrap(
+                              spacing: 12.0,
+                              runSpacing: 8.0,
+                              children: List.generate(6, (index) {
+                                List<Color> greenShades = [
+                                  const Color(0xFFE8F5E9),
+                                  const Color(0xFFC8E6C9),
+                                  const Color(0xFFA5D6A7),
+                                  const Color(0xFF81C784),
+                                  const Color(0xFF4CAF50),
+                                  const Color(0xFF388E3C),
+                                ];
+                                return Container(
+                                  width: 10.0,
+                                  height: 10.0,
+                                  decoration: BoxDecoration(
+                                    color: greenShades[index % greenShades.length],
+                                    shape: BoxShape.circle,
+                                  ),
+                                );
+                              }),
                             ),
                           ],
-                        ),
-                        
-                        const SizedBox(height: 24.0),
-                        
-                        // Botón para cambiar modo
-                        DuolingoButton(
-                          text: _isLoginMode
-                              ? 'Crear Nueva Cuenta'
-                              : 'Ya tengo una cuenta',
-                          onPressed: _toggleMode,
-                          backgroundColor: _isLoginMode
-                              ? AppColors.accentBlue
-                              : AppColors.accentPurple,
-                          isGradient: false,
-                          isOutlined: true,
-                          padding: const EdgeInsets.symmetric(vertical: 18.0),
-                        ),
-                        
-                        const SizedBox(height: 24.0),
-                        
-                        // Términos y condiciones
-                        Container(
-                          padding: const EdgeInsets.all(16.0),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.8),
-                            borderRadius: BorderRadius.circular(16.0),
-                            border: Border.all(
-                              color: AppColors.border,
-                              width: 1.0,
-                            ),
-                          ),
-                          child: Column(
-                            children: [
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(
-                                    Icons.shield,
-                                    color: AppColors.accentGreen,
-                                    size: 16.0,
-                                  ),
-                                  const SizedBox(width: 8.0),
-                                  Text(
-                                    'Seguro y Confiable',
-                                    style: TextStyle(
-                                      color: AppColors.textSecondary,
-                                      fontSize: 12.0,
-                                      fontWeight: FontWeight.w700,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 8.0),
-                              Text(
-                                'Al continuar, aceptas nuestros Términos de Servicio y Política de Privacidad',
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  color: AppColors.textLight,
-                                  fontSize: 11.0,
-                                  fontWeight: FontWeight.w500,
-                                  height: 1.4,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                 ),
-                
-                const SizedBox(height: 32.0),
-                
-                // Mensaje motivacional
-                AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 300),
-                  child: _isLoginMode
-                      ? Container(
-                          key: const ValueKey('login-message'),
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 24.0,
-                            vertical: 16.0,
-                          ),
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: [
-                                AppColors.primary.withOpacity(0.1),
-                                AppColors.accentBlue.withOpacity(0.1),
-                              ],
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                            ),
-                            borderRadius: BorderRadius.circular(20.0),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                Icons.group,
-                                color: AppColors.primary,
-                                size: 20.0,
-                              ),
-                              const SizedBox(width: 12.0),
-                              Text(
-                                'Más de 10,000 hábitos creados hoy',
-                                style: TextStyle(
-                                  color: AppColors.textSecondary,
-                                  fontSize: 14.0,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ],
-                          ),
-                        )
-                      : Container(
-                          key: const ValueKey('register-message'),
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 24.0,
-                            vertical: 16.0,
-                          ),
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: [
-                                AppColors.accentPurple.withOpacity(0.1),
-                                AppColors.accentPink.withOpacity(0.1),
-                              ],
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                            ),
-                            borderRadius: BorderRadius.circular(20.0),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                Icons.rocket_launch,
-                                color: AppColors.accentPurple,
-                                size: 20.0,
-                              ),
-                              const SizedBox(width: 12.0),
-                              Text(
-                                'Empieza tu primer hábito en 5 minutos',
-                                style: TextStyle(
-                                  color: AppColors.textSecondary,
-                                  fontSize: 14.0,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                ),
-                
-                const SizedBox(height: 20.0),
-                
-                // Elementos decorativos de colores
-                Wrap(
-                  spacing: 12.0,
-                  children: List.generate(6, (index) {
-                    return Container(
-                      width: 12.0,
-                      height: 12.0,
-                      decoration: BoxDecoration(
-                        color: AppColors.habitColors[index],
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: AppColors.habitColors[index].withOpacity(0.3),
-                            blurRadius: 4.0,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                    );
-                  }),
-                ),
-              ],
+              ),
             ),
-          ),
+          ],
         ),
       ),
     );
