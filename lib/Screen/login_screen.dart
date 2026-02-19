@@ -103,62 +103,20 @@ class _LoginScreenState extends State<LoginScreen>
     setState(() => _isLoginMode = !_isLoginMode);
   }
 
-  // Crear una nueva onda al tocar - ¡CON MÁS INTENSIDAD!
+  // Crear una sola onda grande al tocar
   void _createWave(Offset position) {
     setState(() {
-      // Crear una onda PRINCIPAL grande
+      // Crear SOLAMENTE UNA onda grande principal
       _waves.add(Wave(
         center: position,
         radius: 0,
-        maxRadius: 300 + _random.nextDouble() * 200, // Más grande
+        maxRadius: 250 + _random.nextDouble() * 150, // Radio máximo
         opacity: 1.0, // Máxima opacidad
-        width: 6 + _random.nextDouble() * 4, // Más gruesa
-        speed: 3 + _random.nextDouble() * 2, // Más rápida
+        width: 5 + _random.nextDouble() * 3, // Grosor
+        speed: 2.5 + _random.nextDouble() * 1.5, // Velocidad
         color: _waveColors[_random.nextInt(_waveColors.length)],
         isGlow: true, // Efecto de brillo
       ));
-
-      // Crear ondas secundarias para efecto de explosión
-      for (int i = 0; i < 3; i++) {
-        final angle = _random.nextDouble() * 2 * pi;
-        final distance = 30 + _random.nextDouble() * 40;
-        final secondaryPosition = Offset(
-          position.dx + cos(angle) * distance,
-          position.dy + sin(angle) * distance,
-        );
-
-        _waves.add(Wave(
-          center: secondaryPosition,
-          radius: 10 + _random.nextDouble() * 20,
-          maxRadius: 150 + _random.nextDouble() * 100,
-          opacity: 0.7 + _random.nextDouble() * 0.3,
-          width: 3 + _random.nextDouble() * 2,
-          speed: 2 + _random.nextDouble() * 1.5,
-          color: _waveColors[_random.nextInt(_waveColors.length)],
-          isGlow: false,
-        ));
-      }
-
-      // Crear pequeñas partículas alrededor
-      for (int i = 0; i < 8; i++) {
-        final angle = _random.nextDouble() * 2 * pi;
-        final distance = 10 + _random.nextDouble() * 30;
-        final particlePosition = Offset(
-          position.dx + cos(angle) * distance,
-          position.dy + sin(angle) * distance,
-        );
-
-        _waves.add(Wave(
-          center: particlePosition,
-          radius: 2 + _random.nextDouble() * 3,
-          maxRadius: 60 + _random.nextDouble() * 40,
-          opacity: 0.9,
-          width: 8 + _random.nextDouble() * 4, // Partículas gruesas
-          speed: 1.5 + _random.nextDouble() * 1,
-          color: Colors.white.withOpacity(0.8),
-          isGlow: true,
-        ));
-      }
     });
   }
 
@@ -210,10 +168,7 @@ class _LoginScreenState extends State<LoginScreen>
 
           return GestureDetector(
             onTapDown: (details) {
-              _createWave(details.localPosition);
-            },
-            onPanUpdate: (details) {
-              // Crear ondas continuas al arrastrar
+              // Crear UNA sola onda en la posición del tap
               _createWave(details.localPosition);
             },
             child: Stack(
@@ -237,7 +192,7 @@ class _LoginScreenState extends State<LoginScreen>
                   ),
                 ),
 
-                // FONDO INTERACTIVO CON ONDAS INTENSAS
+                // FONDO INTERACTIVO CON ONDAS
                 AnimatedBuilder(
                   animation: _animationController,
                   builder: (context, child) {
@@ -245,7 +200,7 @@ class _LoginScreenState extends State<LoginScreen>
                     for (int i = _waves.length - 1; i >= 0; i--) {
                       final wave = _waves[i];
                       wave.radius += wave.speed;
-                      wave.opacity -= wave.speed * 0.01; // Desvanecimiento más lento
+                      wave.opacity -= wave.speed * 0.005; // Desvanecimiento más lento
                       
                       if (wave.radius > wave.maxRadius || wave.opacity <= 0) {
                         _waves.removeAt(i);
@@ -690,7 +645,7 @@ class Wave {
   });
 }
 
-// PAINTER PARA DIBUJAR LAS ONDAS CON MÁS INTENSIDAD
+// PAINTER PARA DIBUJAR LAS ONDAS
 class WavePainter extends CustomPainter {
   final List<Wave> waves;
 
@@ -707,73 +662,40 @@ class WavePainter extends CustomPainter {
 
     for (final wave in waves) {
       if (wave.isGlow) {
-        // EFECTO DE BRILLO INTENSO
-        for (int i = 0; i < 3; i++) {
-          final glowOpacity = wave.opacity * (0.7 - i * 0.2);
+        // EFECTO DE BRILLO
+        for (int i = 0; i < 2; i++) {
+          final glowOpacity = wave.opacity * (0.6 - i * 0.2);
           if (glowOpacity <= 0) continue;
 
           paint.color = Colors.white.withOpacity(glowOpacity);
-          paint.strokeWidth = wave.width * 2.5 - i * (wave.width * 0.8);
+          paint.strokeWidth = wave.width * 2 - i * (wave.width * 0.6);
           
           canvas.drawCircle(
             wave.center,
-            wave.radius + i * 5,
+            wave.radius + i * 4,
             paint,
           );
         }
       }
 
-      // ONDA PRINCIPAL MUY VISIBLE
+      // ONDA PRINCIPAL
       paint.color = wave.color.withOpacity(wave.opacity);
       paint.strokeWidth = wave.width;
       canvas.drawCircle(wave.center, wave.radius, paint);
 
       // EFECTO DE RESPLANDOR INTERNO
       if (wave.opacity > 0.5) {
-        paint.color = Colors.white.withOpacity(wave.opacity * 0.4);
-        paint.strokeWidth = wave.width * 0.6;
+        paint.color = Colors.white.withOpacity(wave.opacity * 0.3);
+        paint.strokeWidth = wave.width * 0.5;
         canvas.drawCircle(wave.center, wave.radius * 0.8, paint);
-      }
-
-      // EFECTOS ADICIONALES PARA MÁS VISIBILIDAD
-      if (wave.radius > 20) {
-        // Sombra exterior
-        paint.color = wave.color.withOpacity(wave.opacity * 0.3);
-        paint.strokeWidth = wave.width * 0.4;
-        canvas.drawCircle(wave.center, wave.radius + 10, paint);
-      }
-
-      if (wave.radius > 40) {
-        // Eco distante
-        paint.color = wave.color.withOpacity(wave.opacity * 0.2);
-        paint.strokeWidth = wave.width * 0.3;
-        canvas.drawCircle(wave.center, wave.radius + 25, paint);
       }
 
       // PUNTO CENTRAL BRILLANTE
       if (wave.opacity > 0.7) {
         paint.style = PaintingStyle.fill;
-        paint.color = Colors.white.withOpacity(wave.opacity * 0.9);
+        paint.color = Colors.white.withOpacity(wave.opacity * 0.8);
         canvas.drawCircle(wave.center, 3, paint);
         paint.style = PaintingStyle.stroke;
-      }
-
-      // RAYOS RADIALES (para ondas grandes)
-      if (wave.radius > 50 && wave.opacity > 0.6) {
-        paint.color = wave.color.withOpacity(wave.opacity * 0.5);
-        paint.strokeWidth = 1.5;
-        
-        for (int i = 0; i < 12; i++) {
-          final angle = (i * pi / 6);
-          final endX = wave.center.dx + cos(angle) * (wave.radius + 20);
-          final endY = wave.center.dy + sin(angle) * (wave.radius + 20);
-          
-          canvas.drawLine(
-            wave.center,
-            Offset(endX, endY),
-            paint,
-          );
-        }
       }
     }
   }
