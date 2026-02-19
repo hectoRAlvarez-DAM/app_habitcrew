@@ -9,6 +9,9 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  google_fonts: ^4.0.3
+  particles_flutter: ^2.0.0
+  iconify_flutter: ^0.0.7
 
 dev_dependencies:
   flutter_test:
