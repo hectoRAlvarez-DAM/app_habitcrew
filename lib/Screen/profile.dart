@@ -1,4 +1,3 @@
-import 'package:app_habitcrew/Widgets/bottomMenu.dart';
 import 'package:app_habitcrew/Widgets/animated_background.dart';
 import 'package:flutter/material.dart';
 
@@ -7,371 +6,362 @@ class Profile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      home: Scaffold(
-        backgroundColor: Colors.transparent,
-        body: AnimatedBackground(
-          child: SafeArea(
-            child: SingleChildScrollView(
-              child: Column(
+    return AnimatedBackground(
+      child: SafeArea(
+        child: SingleChildScrollView(
+          child: Column(
+            children: [
+              // Banner de perfil estilo Discord
+              Stack(
+                clipBehavior: Clip.none,
                 children: [
-                  // Banner de perfil estilo Discord
-                  Stack(
-                    clipBehavior: Clip.none,
-                    children: [
-                      // Banner image
-                      Container(
-                        height: 150,
-                        width: double.infinity,
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                            colors: [
-                              const Color(0xFF5865F2), // Discord blurple
-                              const Color(0xFF404EED),
-                              const Color(0xFF23272A),
-                            ],
-                            stops: const [0.0, 0.4, 1.0],
-                          ),
-                          borderRadius: const BorderRadius.only(
-                            bottomLeft: Radius.circular(16),
-                            bottomRight: Radius.circular(16),
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.3),
-                              blurRadius: 10,
-                              offset: const Offset(0, 4),
-                            ),
-                          ],
-                        ),
-                        child: Stack(
-                          children: [
-                            Positioned.fill(
-                              child: CustomPaint(
-                                painter: DiscordPatternPainter(),
-                              ),
-                            ),
-                            
-                          ],
-                        ),
+                  // Banner image
+                  Container(
+                    height: 150,
+                    width: double.infinity,
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [
+                          const Color(0xFF5865F2), // Discord blurple
+                          const Color(0xFF404EED),
+                          const Color(0xFF23272A),
+                        ],
+                        stops: const [0.0, 0.4, 1.0],
                       ),
-                      
-                      // Avatar superpuesto
-                      Positioned(
-                        bottom: -50,
-                        left: 20,
-                        child: Container(
-                          width: 100,
-                          height: 100,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                              color: Colors.white,
-                              width: 4,
-                            ),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.3),
-                                blurRadius: 10,
-                                offset: const Offset(0, 4),
-                              ),
-                            ],
-                          ),
-                          child: ClipOval(
-                            child: Image.network(
-                              'https://i.pravatar.cc/300',
-                              fit: BoxFit.cover,
-                              errorBuilder: (context, error, stackTrace) {
-                                return Container(
-                                  color: Colors.orange.shade200,
-                                  child: const Icon(
-                                    Icons.person,
-                                    size: 50,
-                                    color: Colors.white,
-                                  ),
-                                );
-                              },
-                            ),
-                          ),
-                        ),
+                      borderRadius: const BorderRadius.only(
+                        bottomLeft: Radius.circular(16),
+                        bottomRight: Radius.circular(16),
                       ),
-                    ],
-                  ),
-                  
-                  const SizedBox(height: 60), // Espacio para el avatar
-                  
-                  // Información de usuario estilo Discord
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                    child: Row(
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.3),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Stack(
                       children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  const Text(
-                                    'María González',
-                                    style: TextStyle(
-                                      fontSize: 24,
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.white,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 6,
-                                      vertical: 2,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: const Color(0xFF5865F2),
-                                      borderRadius: BorderRadius.circular(4),
-                                    ),
-                                    child: const Text(
-                                      'PRO',
-                                      style: TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 10,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 4),
-                              Row(
-                                children: [
-                                  Container(
-                                    width: 10,
-                                    height: 10,
-                                    decoration: const BoxDecoration(
-                                      color: Color(0xFF23A55A),
-                                      shape: BoxShape.circle,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 6),
-                                  const Text(
-                                    '@mariagonzalez',
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      color: Colors.white70,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
-                        
-                        // Botón de editar perfil
-                        Container(
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF4E5058).withOpacity(0.6),
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(
-                              color: Colors.white.withOpacity(0.1),
-                            ),
-                          ),
-                          child: IconButton(
-                            onPressed: () {},
-                            icon: const Icon(
-                              Icons.edit,
-                              color: Colors.white,
-                              size: 20,
-                            ),
+                        Positioned.fill(
+                          child: CustomPaint(
+                            painter: DiscordPatternPainter(),
                           ),
                         ),
                       ],
                     ),
                   ),
                   
-                  const SizedBox(height: 20),
-                  
-                  // Badges / Insignias estilo Discord
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                    child: Row(
-                      children: [
-                        _buildBadge(Icons.emoji_events, 'Habit Master', Colors.amber),
-                        const SizedBox(width: 8),
-                        _buildBadge(Icons.whatshot, '30 Day Streak', Colors.orange),
-                        const SizedBox(width: 8),
-                        _buildBadge(Icons.people, 'Friend', Colors.blue),
-                      ],
-                    ),
-                  ),
-                  
-                  const SizedBox(height: 24),
-                  
-                  // Estadísticas estilo Discord (en lugar de las circulares)
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                  // Avatar superpuesto
+                  Positioned(
+                    bottom: -50,
+                    left: 20,
                     child: Container(
-                      padding: const EdgeInsets.all(16),
+                      width: 100,
+                      height: 100,
                       decoration: BoxDecoration(
-                        color: const Color(0xFF2B2D31),
-                        borderRadius: BorderRadius.circular(8),
+                        shape: BoxShape.circle,
                         border: Border.all(
-                          color: Colors.white.withOpacity(0.05),
+                          color: Colors.white,
+                          width: 4,
                         ),
-                      ),
-                      child: Column(
-                        children: [
-                          _buildInfoRow('Miembro desde', 'Enero 2024'),
-                          const Divider(color: Colors.white24, height: 16),
-                          _buildInfoRow('Hábitos completados', '127'),
-                          const Divider(color: Colors.white24, height: 16),
-                          _buildInfoRow('Racha actual', '45 días'),
-                          const Divider(color: Colors.white24, height: 16),
-                          _buildInfoRow('Amigos', '12'),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.3),
+                            blurRadius: 10,
+                            offset: const Offset(0, 4),
+                          ),
                         ],
                       ),
-                    ),
-                  ),
-                  
-                  const SizedBox(height: 30),
-                  
-                  // SECCIÓN DE LOGROS (estilo Duolingo, igual que antes)
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'LOGROS',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white70,
-                            letterSpacing: 1.2,
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        
-                        LayoutBuilder(
-                          builder: (context, constraints) {
-                            double screenWidth = constraints.maxWidth;
-                            int crossAxisCount = screenWidth > 600 ? 4 : 2;
-                            
-                            return GridView.count(
-                              shrinkWrap: true,
-                              physics: const NeverScrollableScrollPhysics(),
-                              crossAxisCount: crossAxisCount,
-                              mainAxisSpacing: 12,
-                              crossAxisSpacing: 12,
-                              childAspectRatio: 0.9,
-                              children: [
-                                _buildAchievementGrid(
-                                  'Madrugador',
-                                  '7 días seguidos',
-                                  Icons.wb_sunny,
-                                  Colors.orange,
-                                  100,
-                                ),
-                                _buildAchievementGrid(
-                                  'En racha',
-                                  '30 días de racha',
-                                  Icons.local_fire_department,
-                                  Colors.red,
-                                  80,
-                                ),
-                                _buildAchievementGrid(
-                                  'Social',
-                                  '5 amigos',
-                                  Icons.people,
-                                  const Color.fromARGB(255, 8, 56, 95),
-                                  60,
-                                ),
-                                _buildAchievementGrid(
-                                  'Disciplina',
-                                  '50 hábitos',
-                                  Icons.auto_awesome,
-                                  const Color.fromARGB(255, 49, 2, 58),
-                                  40,
-                                ),
-                              ],
+                      child: ClipOval(
+                        child: Image.network(
+                          'https://i.pravatar.cc/300',
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) {
+                            return Container(
+                              color: Colors.orange.shade200,
+                              child: const Icon(
+                                Icons.person,
+                                size: 50,
+                                color: Colors.white,
+                              ),
                             );
                           },
                         ),
-                      ],
+                      ),
                     ),
                   ),
-                  
-                  const SizedBox(height: 30),
-                  
-                  // SECCIÓN DE HÁBITOS FAVORITOS (estilo Duolingo, igual que antes)
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'HÁBITOS FAVORITOS',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white70,
-                            letterSpacing: 1.2,
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        _buildHabitFavorite(
-                          'Meditación',
-                          '20 min diarios',
-                          Icons.self_improvement,
-                          Colors.purple.shade200,
-                          '90%',
-                        ),
-                        const SizedBox(height: 12),
-                        _buildHabitFavorite(
-                          'Ejercicio',
-                          '30 min diarios',
-                          Icons.fitness_center,
-                          Colors.green.shade200,
-                          '75%',
-                        ),
-                        const SizedBox(height: 12),
-                        _buildHabitFavorite(
-                          'Lectura',
-                          '15 páginas',
-                          Icons.menu_book,
-                          Colors.blue.shade200,
-                          '60%',
-                        ),
-                      ],
-                    ),
-                  ),
-                  
-                  const SizedBox(height: 30),
-                  
-                  // Botones de acción (estilo Duolingo)
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                    child: Column(
-                      children: [
-                       
-                        const SizedBox(height: 12),
-                        _buildActionButton(
-                          'Configuración',
-                          Icons.settings,
-                          Colors.grey,
-                        ),
-                      ],
-                    ),
-                  ),
-                  
-                  const SizedBox(height: 20),
                 ],
               ),
-            ),
+              
+              const SizedBox(height: 60), // Espacio para el avatar
+              
+              // Información de usuario estilo Discord
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              const Text(
+                                'María González',
+                                style: TextStyle(
+                                  fontSize: 24,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 6,
+                                  vertical: 2,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF5865F2),
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: const Text(
+                                  'PRO',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          Row(
+                            children: [
+                              Container(
+                                width: 10,
+                                height: 10,
+                                decoration: const BoxDecoration(
+                                  color: Color(0xFF23A55A),
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              const Text(
+                                '@mariagonzalez',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: Colors.white70,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                    
+                    // Botón de editar perfil
+                    Container(
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF4E5058).withOpacity(0.6),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: Colors.white.withOpacity(0.1),
+                        ),
+                      ),
+                      child: IconButton(
+                        onPressed: () {},
+                        icon: const Icon(
+                          Icons.edit,
+                          color: Colors.white,
+                          size: 20,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              
+              const SizedBox(height: 20),
+              
+              // Badges / Insignias estilo Discord
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: Row(
+                  children: [
+                    _buildBadge(Icons.emoji_events, 'Habit Master', Colors.amber),
+                    const SizedBox(width: 8),
+                    _buildBadge(Icons.whatshot, '30 Day Streak', Colors.orange),
+                    const SizedBox(width: 8),
+                    _buildBadge(Icons.people, 'Friend', Colors.blue),
+                  ],
+                ),
+              ),
+              
+              const SizedBox(height: 24),
+              
+              // Estadísticas estilo Discord
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF2B2D31),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: Colors.white.withOpacity(0.05),
+                    ),
+                  ),
+                  child: Column(
+                    children: [
+                      _buildInfoRow('Miembro desde', 'Enero 2024'),
+                      const Divider(color: Colors.white24, height: 16),
+                      _buildInfoRow('Hábitos completados', '127'),
+                      const Divider(color: Colors.white24, height: 16),
+                      _buildInfoRow('Racha actual', '45 días'),
+                      const Divider(color: Colors.white24, height: 16),
+                      _buildInfoRow('Amigos', '12'),
+                    ],
+                  ),
+                ),
+              ),
+              
+              const SizedBox(height: 30),
+              
+              // SECCIÓN DE LOGROS
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'LOGROS',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white70,
+                        letterSpacing: 1.2,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    
+                    LayoutBuilder(
+                      builder: (context, constraints) {
+                        double screenWidth = constraints.maxWidth;
+                        int crossAxisCount = screenWidth > 600 ? 4 : 2;
+                        
+                        return GridView.count(
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          crossAxisCount: crossAxisCount,
+                          mainAxisSpacing: 12,
+                          crossAxisSpacing: 12,
+                          childAspectRatio: 0.9,
+                          children: [
+                            _buildAchievementGrid(
+                              'Madrugador',
+                              '7 días seguidos',
+                              Icons.wb_sunny,
+                              Colors.orange,
+                              100,
+                            ),
+                            _buildAchievementGrid(
+                              'En racha',
+                              '30 días de racha',
+                              Icons.local_fire_department,
+                              Colors.red,
+                              80,
+                            ),
+                            _buildAchievementGrid(
+                              'Social',
+                              '5 amigos',
+                              Icons.people,
+                              const Color.fromARGB(255, 8, 56, 95),
+                              60,
+                            ),
+                            _buildAchievementGrid(
+                              'Disciplina',
+                              '50 hábitos',
+                              Icons.auto_awesome,
+                              const Color.fromARGB(255, 49, 2, 58),
+                              40,
+                            ),
+                          ],
+                        );
+                      },
+                    ),
+                  ],
+                ),
+              ),
+              
+              const SizedBox(height: 30),
+              
+              // SECCIÓN DE HÁBITOS FAVORITOS
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'HÁBITOS FAVORITOS',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white70,
+                        letterSpacing: 1.2,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    _buildHabitFavorite(
+                      'Meditación',
+                      '20 min diarios',
+                      Icons.self_improvement,
+                      Colors.purple.shade200,
+                      '90%',
+                    ),
+                    const SizedBox(height: 12),
+                    _buildHabitFavorite(
+                      'Ejercicio',
+                      '30 min diarios',
+                      Icons.fitness_center,
+                      Colors.green.shade200,
+                      '75%',
+                    ),
+                    const SizedBox(height: 12),
+                    _buildHabitFavorite(
+                      'Lectura',
+                      '15 páginas',
+                      Icons.menu_book,
+                      Colors.blue.shade200,
+                      '60%',
+                    ),
+                  ],
+                ),
+              ),
+              
+              const SizedBox(height: 30),
+              
+              // Botones de acción
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: Column(
+                  children: [
+                    const SizedBox(height: 12),
+                    _buildActionButton(
+                      'Configuración',
+                      Icons.settings,
+                      Colors.grey,
+                    ),
+                  ],
+                ),
+              ),
+              
+              const SizedBox(height: 20),
+            ],
           ),
         ),
-        bottomNavigationBar: const BottomMenu(currentIndex: 4),
       ),
     );
   }
@@ -427,7 +417,7 @@ class Profile extends StatelessWidget {
     );
   }
 
-  // Widgets estilo Duolingo (igual que antes)
+  // Widgets estilo Duolingo
   Widget _buildAchievementGrid(String title, String subtitle, IconData icon, Color color, int progress) {
     Color getSpotlightColor(Color baseColor) {
       if (baseColor == Colors.red || baseColor == const Color(0xFFF44336)) {
@@ -495,7 +485,7 @@ class Profile extends StatelessWidget {
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   gradient: RadialGradient(
-                    center: Alignment(-0.45, -0.45),
+                    center: const Alignment(-0.45, -0.45),
                     radius: 0.85,
                     colors: [
                       spotlightColor,
