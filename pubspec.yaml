@@ -12,6 +12,7 @@ dependencies:
   google_fonts: ^4.0.3
   particles_flutter: ^2.0.0
   iconify_flutter: ^0.0.7
+  flutter_custom_clippers: ^2.1.0
 
 dev_dependencies:
   flutter_test:
@@ -20,3 +21,5 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  assets:
+    - assets/
