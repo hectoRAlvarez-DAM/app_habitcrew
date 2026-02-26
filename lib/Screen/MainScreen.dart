@@ -17,7 +17,6 @@ class MainScreen extends StatefulWidget {
 class _MainScreenState extends State<MainScreen> {
   int _currentIndex = 0;
 
-  // Lista de las pantallas (SIN SCAFFOLD)
   final List<Widget> _pages = [
     const Home(),
     const Quests(),
@@ -29,14 +28,29 @@ class _MainScreenState extends State<MainScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: _pages[_currentIndex],  // ← Aquí se muestra la pantalla actual
-      bottomNavigationBar: BottomMenu(
-        currentIndex: _currentIndex,
-        onTabChange: (index) {
-          setState(() {
-            _currentIndex = index;  // ← Cambia el índice y se actualiza la pantalla
-          });
-        },
+      // Importante: No usamos la propiedad bottomNavigationBar aquí
+      body: Stack(
+        children: [
+          // CAPA 1: LA PÁGINA ACTUAL
+          // Usamos Positioned.fill para que la página ocupe TODA la pantalla, 
+          // pasando por debajo del menú.
+          Positioned.fill(
+            child: _pages[_currentIndex],
+          ),
+
+          // CAPA 2: EL MENÚ FLOTANTE
+          Align(
+            alignment: Alignment.bottomCenter,
+            child: BottomMenu(
+              currentIndex: _currentIndex,
+              onTabChange: (index) {
+                setState(() {
+                  _currentIndex = index;
+                });
+              },
+            ),
+          ),
+        ],
       ),
     );
   }
