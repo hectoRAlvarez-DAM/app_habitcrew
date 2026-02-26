@@ -1,89 +1,187 @@
-import 'package:app_habitcrew/Screen/create.dart';
-import 'package:app_habitcrew/Screen/home.dart';
-import 'package:app_habitcrew/Screen/profile.dart';
-import 'package:app_habitcrew/Screen/quests.dart';
-import 'package:app_habitcrew/Screen/shop.dart';
 import 'package:flutter/material.dart';
-import 'package:iconify_flutter/iconify_flutter.dart';
-import 'package:iconify_flutter/icons/mdi.dart';
+import 'dart:math' as math;
+
+class PsArcClipper extends CustomClipper<Path> {
+  final double sideHeight; 
+  final double peakHeight; 
+
+  PsArcClipper({required this.sideHeight, required this.peakHeight});
+
+  @override
+  Path getClip(Size size) {
+    Path path = Path();
+    path.moveTo(0, size.height);
+    path.lineTo(0, sideHeight);
+    path.cubicTo(
+      size.width * 0.35, peakHeight, 
+      size.width * 0.65, peakHeight, 
+      size.width, sideHeight,        
+    );
+    path.lineTo(size.width, size.height);
+    path.close();
+    return path;
+  }
+  @override
+  bool shouldReclip(covariant CustomClipper<Path> oldClipper) => true;
+}
 
 class BottomMenu extends StatelessWidget {
   final int currentIndex;
+  final Function(int) onTabChange;
 
-  const BottomMenu({super.key, required this.currentIndex});
+  const BottomMenu({
+    super.key,
+    required this.currentIndex,
+    required this.onTabChange,
+  });
+
+  final List<Map<String, dynamic>> _menuItems = const [
+    {'icon': Icons.home_filled, 'label': 'HOME'},
+    {'icon': Icons.emoji_events, 'label': 'QUEST'},
+    {'icon': Icons.add_circle_outline, 'label': 'CREATE'},
+    {'icon': Icons.shopping_bag_outlined, 'label': 'SHOP'},
+    {'icon': Icons.person_outline, 'label': 'PROFILE'},
+  ];
+
+  // --- CURVA MENOS PRONUNCIADA ---
+  double _getCurveOffset(double t, double intensity) {
+    // Reducimos el factor de 4.0 a 3.2 para que la curva sea más plana y encaje con el CubicTo
+    return 3.2 * intensity * math.pow(t - 0.5, 2);
+  }
 
   @override
   Widget build(BuildContext context) {
+    final double bottomPadding = MediaQuery.of(context).padding.bottom;
+    
+    // CONFIGURACIÓN SOLICITADA
+    const double visualHeight = 85.0; 
+    const double blackSectionHeight = 15.0; 
+    const double curveIntensity = 20.0; 
+    
+    final double totalHeight = visualHeight + bottomPadding;
+
     return Container(
-      height: 70,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        border: const Border(
-          top: BorderSide(color: Colors.black, width: 1),
-        ),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
+      height: totalHeight, 
+      color: Colors.transparent,
+      child: Stack(
+        alignment: Alignment.bottomCenter,
+        clipBehavior: Clip.none, 
         children: [
-          _menuButton(
-            context,
-            index: 0,
-            icon: currentIndex == 0 ? Mdi.home : Mdi.home_outline,
-            page: const Home(),
+          // FONDO GRIS
+          ClipPath(
+            clipper: PsArcClipper(
+              sideHeight: curveIntensity, 
+              peakHeight: 0,             
+            ),
+            child: Container(
+              height: totalHeight,
+              width: double.infinity,
+              color: const Color(0xFF222222),
+            ),
           ),
-          _menuButton(
-            context,
-            index: 1,
-            icon: currentIndex == 1 ? Mdi.trophy : Mdi.trophy_outline,
-            page: const Quests(),
+
+          // FONDO NEGRO
+          ClipPath(
+            clipper: PsArcClipper(
+              sideHeight: (totalHeight - (blackSectionHeight + bottomPadding)), 
+              peakHeight: (totalHeight - (blackSectionHeight + bottomPadding) - curveIntensity),
+            ),
+            child: Container(
+              height: totalHeight,
+              width: double.infinity,
+              color: const Color(0xFF050505),
+            ),
           ),
-          _menuButton(
-            context,
-            index: 2,
-            icon: currentIndex == 2 ? Mdi.add_circle : Mdi.add_circle_outline,
-            page: const Create(),
-            size: 50,
-          ),
-          _menuButton(
-            context,
-            index: 3,
-            icon: currentIndex == 3 ? Mdi.shopping : Mdi.shopping_outline,
-            page: const Shop(),
-          ),
-          _menuButton(
-            context,
-            index: 4,
-            icon: currentIndex == 4 ? Mdi.account : Mdi.account_outline,
-            page: const Profile(),
+
+          // CONTENIDO
+          SizedBox(
+            height: totalHeight,
+            child: Stack(
+              children: [
+                // ICONOS
+                Positioned(
+                  top: 22, // Subido un poco para centrar mejor en el gris
+                  left: 0,
+                  right: 0,
+                  child: Row(
+                    children: List.generate(_menuItems.length, (index) {
+                      final bool isActive = currentIndex == index;
+                      double t = index / (_menuItems.length - 1);
+                      // Usamos un 80% de la intensidad para que la curva sea más suave que el borde
+                      double vOffset = _getCurveOffset(t, curveIntensity * 0.8);
+
+                      return Expanded(
+                        child: GestureDetector(
+                          behavior: HitTestBehavior.opaque,
+                          onTap: () => onTabChange(index),
+                          child: Transform.translate(
+                            offset: Offset(0, vOffset),
+                            child: Icon(
+                              _menuItems[index]['icon'],
+                              color: isActive ? Colors.white : Colors.white24,
+                              size: 24,
+                            ),
+                          ),
+                        ),
+                      );
+                    }),
+                  ),
+                ),
+
+                // LÍNEA INDICADORA
+                AnimatedAlign(
+                  duration: const Duration(milliseconds: 300),
+                  curve: Curves.easeOutCubic,
+                  alignment: Alignment(
+                    (currentIndex / (_menuItems.length - 1)) * 2 - 1,
+                    0, 
+                  ),
+                  child: FractionallySizedBox(
+                    widthFactor: 1 / _menuItems.length,
+                    child: Builder(
+                      builder: (context) {
+                        double t = currentIndex / (_menuItems.length - 1);
+                        double lineVOffset = _getCurveOffset(t, curveIntensity * 0.8);
+
+                        return Transform.translate(
+                          // Ajustado el offset base para que la línea no quede hundida
+                          offset: Offset(0, (visualHeight - blackSectionHeight - 16) + lineVOffset),
+                          child: Center(
+                            child: Container(
+                              width: 32,
+                              height: 2,
+                              color: Colors.white,
+                            ),
+                          ),
+                        );
+                      }
+                    ),
+                  ),
+                ),
+
+                // TEXTO
+                Positioned(
+                  bottom: bottomPadding + 2, // Ajuste sutil para que el texto no toque el borde
+                  left: 0,
+                  right: 0,
+                  height: blackSectionHeight,
+                  child: Center(
+                    child: Text(
+                      _menuItems[currentIndex]['label'],
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 9,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 1.2,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
-    );
-  }
-
-  Widget _menuButton(
-    BuildContext context, {
-    required int index,
-    required String icon,
-    required Widget page,
-    double size = 40,
-  }) {
-    final bool isActive = currentIndex == index;
-
-    return IconButton(
-      icon: Iconify(
-        icon,
-        size: size,
-        color: isActive ? Colors.blue : Colors.green,
-      ),
-      onPressed: () {
-        if (!isActive) {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => page),
-          );
-        }
-      },
     );
   }
 }

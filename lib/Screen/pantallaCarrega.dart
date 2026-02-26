@@ -1,4 +1,4 @@
-import 'package:app_habitcrew/Screen/home.dart';
+import 'package:app_habitcrew/Screen/MainScreen.dart';
 import 'package:flutter/material.dart';
 
 class Pantallacarrega extends StatefulWidget {
@@ -37,7 +37,7 @@ class _PantallacarregaState extends State<Pantallacarrega>
     Future.delayed(const Duration(seconds: 4), () {
       Navigator.pushReplacement(
         context, 
-        MaterialPageRoute(builder: (context) => const Home()),
+        MaterialPageRoute(builder: (context) => const MainScreen()),
       );
     });
   }
