@@ -17,7 +17,7 @@ class BottomMenu extends StatelessWidget {
     return Container(
       height: 70,
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: const Color.fromARGB(255, 0, 0, 0),
         border: const Border(
           top: BorderSide(color: Colors.black, width: 1),
         ),

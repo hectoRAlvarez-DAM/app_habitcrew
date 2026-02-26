@@ -1,88 +1,45 @@
-// Widgets/animated_background.dart
 import 'package:flutter/material.dart';
 import 'dart:math';
 
 class AnimatedBackground extends StatefulWidget {
   final Widget child;
-  
+
   const AnimatedBackground({
     Key? key,
     required this.child,
   }) : super(key: key);
 
   @override
-  _AnimatedBackgroundState createState() => _AnimatedBackgroundState();
+  State<AnimatedBackground> createState() => _AnimatedBackgroundState();
 }
 
-class _AnimatedBackgroundState extends State<AnimatedBackground> 
+class _AnimatedBackgroundState extends State<AnimatedBackground>
     with SingleTickerProviderStateMixin {
   late AnimationController _controller;
+
   final List<OndaLuz> ondas = [];
   final List<ParticulaLuz> particulas = [];
 
   @override
   void initState() {
     super.initState();
+
+    // Duración que coincide con el período de las ondas
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(seconds: 8),
+      duration: const Duration(seconds: 24), // Múltiplo de los períodos
     )..repeat();
 
-    // Crear ondas de luz PS3 - horizontales en el centro
+    // Ondas con períodos específicos para que el loop sea perfecto
     ondas.addAll([
-      OndaLuz(
-        offset: 0,
-        amplitud: 0,
-        frecuencia: 0.0,
-        velocidad: 0.25,
-        grosor: 3.0,
-        color: const Color(0xFF22C55E),
-        opacidad: 0.4,
-        delayFactor: 0.0,
-      ),
-      OndaLuz(
-        offset: 1,
-        amplitud: 0,
-        frecuencia: 0.0,
-        velocidad: 0.32,
-        grosor: 3.2,
-        color: const Color(0xFF16A34A),
-        opacidad: 0.32,
-        delayFactor: 0.12,
-      ),
-      OndaLuz(
-        offset: 2,
-        amplitud: 0,
-        frecuencia: 0.0,
-        velocidad: 0.18,
-        grosor: 2.8,
-        color: const Color(0xFF4CAF50),
-        opacidad: 0.28,
-        delayFactor: 0.24,
-      ),
-      OndaLuz(
-        offset: 3,
-        amplitud: 0,
-        frecuencia: 0.0,
-        velocidad: 0.28,
-        grosor: 3.3,
-        color: const Color(0xFF22C55E),
-        opacidad: 0.26,
-        delayFactor: 0.36,
-      ),
-      OndaLuz(
-        offset: 4,
-        amplitud: 0,
-        frecuencia: 0.0,
-        velocidad: 0.22,
-        grosor: 2.9,
-        color: const Color(0xFF2E7D32),
-        opacidad: 0.24,
-        delayFactor: 0.48,
-      ),
+      OndaLuz(0, 2.0, 3.0, const Color(0xFF22C55E), 0.40, 0.0),  // período: 2π/2 = π
+      OndaLuz(1, 3.0, 3.2, const Color(0xFF16A34A), 0.32, 0.2),  // período: 2π/3
+      OndaLuz(2, 1.5, 2.8, const Color(0xFF4CAF50), 0.28, 0.4),  // período: 2π/1.5
+      OndaLuz(3, 2.5, 3.3, const Color(0xFF22C55E), 0.26, 0.6),  // período: 2π/2.5
+      OndaLuz(4, 1.8, 2.9, const Color(0xFF2E7D32), 0.24, 0.8),  // período: 2π/1.8
     ]);
 
-    // Crear partículas de luz (más visibles)
+    // Partículas con movimiento periódico
     for (int i = 0; i < 50; i++) {
       particulas.add(ParticulaLuz.aleatoria());
     }
@@ -92,42 +49,39 @@ class _AnimatedBackgroundState extends State<AnimatedBackground>
   Widget build(BuildContext context) {
     return Stack(
       children: [
-        // Fondo negro profundo con tonos verdes sutiles
+        // Fondo
         Container(
-          decoration: BoxDecoration(
+          decoration: const BoxDecoration(
             gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
               colors: [
                 Colors.black,
-                const Color(0xFF041014), // verde-negro muy oscuro
-                const Color(0xFF022318), // verde oscuro
-                const Color(0xFF063B2A), // verde moderado
+                Color(0xFF041014),
+                Color(0xFF022318),
+                Color(0xFF063B2A),
               ],
-              stops: const [0.0, 0.3, 0.65, 1.0],
+              stops: [0.0, 0.3, 0.65, 1.0],
             ),
           ),
         ),
-        
-        // Capa de ondas y partículas
+
+        // Ondas + partículas con loop perfecto
         Positioned.fill(
           child: CustomPaint(
-            painter: OndasPS3Painter(
+            painter: OndasLoopPerfectoPainter(
               ondas: ondas,
               particulas: particulas,
               animation: _controller,
             ),
           ),
         ),
-        
-        // Overlay muy sutil oscuro para integrar las ondas
+
+        // Overlay
         Positioned.fill(
-          child: Container(
-            color: Colors.black.withOpacity(0.15),
-          ),
+          child: Container(color: Colors.black.withOpacity(0.15)),
         ),
-        
-        // Contenido
+
         widget.child,
       ],
     );
@@ -140,73 +94,83 @@ class _AnimatedBackgroundState extends State<AnimatedBackground>
   }
 }
 
+///////////////////////////////////////////////////////////////////////////
+// MODELOS
+///////////////////////////////////////////////////////////////////////////
+
 class OndaLuz {
   final double offset;
-  final double amplitud;
-  final double frecuencia;
-  final double velocidad;
+  final double frecuencia; // Cambié velocidad por frecuencia
   final double grosor;
   final Color color;
   final double opacidad;
-  final double delayFactor;
+  final double fase;
 
-  OndaLuz({
-    required this.offset,
-    required this.amplitud,
-    required this.frecuencia,
-    required this.velocidad,
-    required this.grosor,
-    required this.color,
-    required this.opacidad,
-    required this.delayFactor,
-  });
+  OndaLuz(
+    this.offset,
+    this.frecuencia,
+    this.grosor,
+    this.color,
+    this.opacidad,
+    this.fase,
+  );
 }
 
 class ParticulaLuz {
-  double x, y;
-  double tamano;
-  double opacidad;
-  double velocidadX;
-  double velocidadY;
+  final double baseX, baseY;
+  final double tamano;
+  final double opacidad;
+  final double faseX, faseY;
+  final double frecuenciaX, frecuenciaY; // Cambié amp por frecuencia
+  final double ampX, ampY;
 
   ParticulaLuz({
-    required this.x,
-    required this.y,
+    required this.baseX,
+    required this.baseY,
     required this.tamano,
     required this.opacidad,
-    required this.velocidadX,
-    required this.velocidadY,
+    required this.faseX,
+    required this.faseY,
+    required this.frecuenciaX,
+    required this.frecuenciaY,
+    required this.ampX,
+    required this.ampY,
   });
 
   factory ParticulaLuz.aleatoria() {
-    final random = Random();
+    final r = Random();
     return ParticulaLuz(
-      x: random.nextDouble() * 400,
-      y: random.nextDouble() * 800,
-      tamano: 2 + random.nextDouble() * 6, // Partículas más grandes
-      opacidad: 0.2 + random.nextDouble() * 0.4, // Más opacas
-      velocidadX: (random.nextDouble() - 0.5) * 0.3,
-      velocidadY: (random.nextDouble() - 0.5) * 0.2,
+      baseX: r.nextDouble() * 400,
+      baseY: r.nextDouble() * 800,
+      tamano: 2 + r.nextDouble() * 6,
+      opacidad: 0.2 + r.nextDouble() * 0.4,
+      faseX: r.nextDouble() * 2 * pi,
+      faseY: r.nextDouble() * 2 * pi,
+      frecuenciaX: 0.5 + r.nextDouble(),  // Frecuencias aleatorias
+      frecuenciaY: 0.5 + r.nextDouble(),
+      ampX: 10 + r.nextDouble() * 20,
+      ampY: 10 + r.nextDouble() * 20,
     );
   }
 
-  void mover(double delta, double screenWidth, double screenHeight) {
-    x += velocidadX * delta * 30;
-    y += velocidadY * delta * 30;
-
-    if (x < 0) x = screenWidth;
-    if (x > screenWidth) x = 0;
-    if (y < 0) y = screenHeight;
-    if (y > screenHeight) y = 0;
+  Offset posicion(double t) {
+    return Offset(
+      baseX + sin(t * frecuenciaX + faseX) * ampX,
+      baseY + cos(t * frecuenciaY + faseY) * ampY,
+    );
   }
 }
 
-class OndasPS3Painter extends CustomPainter {
+///////////////////////////////////////////////////////////////////////////
+// PAINTER CON LOOP PERFECTO
+///////////////////////////////////////////////////////////////////////////
+
+class OndasLoopPerfectoPainter extends CustomPainter {
   final List<OndaLuz> ondas;
   final List<ParticulaLuz> particulas;
   final Animation<double> animation;
 
-  OndasPS3Painter({
+  OndasLoopPerfectoPainter({
     required this.ondas,
     required this.particulas,
     required this.animation,
@@ -214,126 +178,137 @@ class OndasPS3Painter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
+    // t va de 0 a 2π en la duración de la animación
+    final t = animation.value * 2 * pi;
     final centerY = size.height * 0.45;
-    
-    // Dibujar ondas horizontales con efecto infinito
-    for (var onda in ondas) {
-      final paint = Paint()
-        ..color = onda.color.withOpacity(onda.opacidad)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = onda.grosor
-        ..strokeCap = StrokeCap.round
-        ..strokeJoin = StrokeJoin.round;
 
-      final double tiempo = (animation.value * 2 * pi + (onda.delayFactor * 2 * pi));
-      final double yOffset = centerY + (onda.offset - 2) * 40;
-      
-      // Efecto de desplazamiento horizontal infinito
-      final double horizontalShift = (tiempo * onda.velocidad * 200) % (size.width + 200);
-      
-      // Crear onda con desplazamiento infinito
+    ///////////////////////////////
+    // ONDAS CON LOOP PERFECTO
+    ///////////////////////////////
+    for (var onda in ondas) {
+      // El tiempo es periódico: cuando t = 2π, volvemos al estado inicial
+      final tiempo = t + onda.fase * pi;
+      final yBase = centerY + (onda.offset - 2) * 40;
+
       final path = Path();
-      double prevY = 0;
       
-      for (double x = -200; x <= size.width + 200; x += 2) {
-        // Componentes de onda para movimiento orgánico
-        double wave1 = sin((x * 0.012) - tiempo * 0.5) * 42;
-        double wave2 = sin((x * 0.008 + tiempo * 0.25)) * 28;
-        double wave3 = cos((x * 0.005 - tiempo * 0.35)) * 18;
+      // Para asegurar que el principio y final conecten perfectamente,
+      // dibujamos la onda en un espacio que es múltiplo del período espacial
+      double periodoEspacial = size.width * 0.8; // Período espacial de la onda
+      
+      for (double x = -50; x <= size.width + 50; x += 3) {
+        // Usamos funciones que son periódicas tanto en espacio como en tiempo
+        // Cuando t = 2π, sin(t) = sin(0) = 0, así que el estado es idéntico
         
-        // Aplicar el desplazamiento infinito
-        double xShifted = (x - horizontalShift);
-        while (xShifted > size.width) xShifted -= (size.width + 200);
-        while (xShifted < -200) xShifted += (size.width + 200);
+        double wave = 0;
         
-        double y = yOffset + wave1 + wave2 + wave3;
+        // Componente 1: Período espacial = periodoEspacial
+        // Período temporal = 2π/frecuencia
+        wave += sin(x * 2 * pi / periodoEspacial - tiempo * onda.frecuencia) * 35;
         
-        if (x == -200) {
-          path.moveTo(xShifted, y);
-        } else {
-          // Interpolación suave entre puntos
-          path.quadraticBezierTo(xShifted - 1, (prevY + y) / 2, xShifted, y);
+        // Componente 2: Período espacial = periodoEspacial * 0.5
+        wave += sin(x * 4 * pi / periodoEspacial + tiempo * onda.frecuencia * 0.7) * 25;
+        
+        // Componente 3: Período espacial = periodoEspacial * 1.3
+        wave += cos(x * 2 * pi / (periodoEspacial * 1.3) - tiempo * onda.frecuencia * 0.5) * 15;
+        
+        // Aseguramos que la onda sea continua en los bordes
+        // Multiplicamos por una ventana que es 1 en el centro y 0 en los bordes
+        double ventana = 1.0;
+        if (x < 0) {
+          ventana = 1.0 - (x.abs() / 50);
+        } else if (x > size.width) {
+          ventana = 1.0 - ((x - size.width) / 50);
         }
-        prevY = y;
+        ventana = ventana.clamp(0.0, 1.0);
+        
+        double y = yBase + wave * ventana;
+
+        if (x == -50) {
+          path.moveTo(x, y);
+        } else {
+          path.lineTo(x, y);
+        }
       }
 
-      // Primera capa principal con blur
-      paint.maskFilter = const MaskFilter.blur(BlurStyle.normal, 3);
-      canvas.drawPath(path, paint);
-
-      // Segunda capa más gruesa y difusa
-      paint
-        ..color = onda.color.withOpacity(onda.opacidad * 0.6)
-        ..strokeWidth = onda.grosor * 1.8
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8);
-      canvas.drawPath(path, paint);
-
-      // Tercera capa muy suave para efecto glow
-      paint
-        ..color = onda.color.withOpacity(onda.opacidad * 0.35)
-        ..strokeWidth = onda.grosor * 3.5
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 14);
-      canvas.drawPath(path, paint);
-
-      // Cuarta capa ultra suave
-      paint
-        ..color = onda.color.withOpacity(onda.opacidad * 0.15)
-        ..strokeWidth = onda.grosor * 5
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 20);
-      canvas.drawPath(path, paint);
+      // Dibujamos la onda
+      _drawWaveWithGlow(canvas, path, onda, t);
     }
 
-    // Dibujar partículas con movimiento más natural
-    for (var particula in particulas) {
-      particula.mover(animation.value, size.width, size.height);
-      
-      // Centro de la partícula
-      final paintCore = Paint()
-        ..color = const Color(0xFF22C55E).withOpacity(particula.opacidad)
+    ///////////////////////////////
+    // PARTÍCULAS CON LOOP PERFECTO
+    ///////////////////////////////
+    for (var p in particulas) {
+      final pos = p.posicion(t);
+
+      final core = Paint()
+        ..color = const Color(0xFF22C55E).withOpacity(p.opacidad)
         ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 1);
-      canvas.drawCircle(
-        Offset(particula.x, particula.y),
-        particula.tamano * 0.6,
-        paintCore,
-      );
 
-      // Glow intermedio
-      final paintMid = Paint()
-        ..color = const Color(0xFF22C55E).withOpacity(particula.opacidad * 0.6)
+      final mid = Paint()
+        ..color = const Color(0xFF22C55E).withOpacity(p.opacidad * 0.6)
         ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4);
-      canvas.drawCircle(
-        Offset(particula.x, particula.y),
-        particula.tamano * 1.4,
-        paintMid,
-      );
 
-      // Glow exterior
-      final paintOuter = Paint()
-        ..color = const Color(0xFF22C55E).withOpacity(particula.opacidad * 0.3)
+      final outer = Paint()
+        ..color = const Color(0xFF22C55E).withOpacity(p.opacidad * 0.3)
         ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8);
-      canvas.drawCircle(
-        Offset(particula.x, particula.y),
-        particula.tamano * 2.2,
-        paintOuter,
-      );
+
+      canvas.drawCircle(pos, p.tamano * 0.6, core);
+      canvas.drawCircle(pos, p.tamano * 1.4, mid);
+      canvas.drawCircle(pos, p.tamano * 2.2, outer);
     }
 
-    // Destellos ocasionales muy sutiles
-    final random = Random((animation.value * 100).toInt());
-    if (random.nextDouble() > 0.96) {
-      final flashPaint = Paint()
+    ///////////////////////////////
+    // DESTELLOS PERIÓDICOS CON LOOP PERFECTO
+    ///////////////////////////////
+    // Cuando t = 2π, sin(3t) = sin(6π) = 0, igual que al inicio
+    if (sin(t * 3) > 0.995) {
+      final flash = Paint()
         ..color = const Color(0xFF22C55E).withOpacity(0.04)
         ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 30);
-      
+
       canvas.drawCircle(
-        Offset(
-          random.nextDouble() * size.width,
-          random.nextDouble() * size.height,
-        ),
-        60 + random.nextDouble() * 120,
-        flashPaint,
+        Offset(size.width * 0.5, size.height * 0.4),
+        120,
+        flash,
       );
     }
+  }
+
+  void _drawWaveWithGlow(Canvas canvas, Path path, OndaLuz onda, double t) {
+    final paint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round;
+
+    // La opacidad también puede ser periódica si queremos
+    double opacidadBase = onda.opacidad;
+    
+    // Capa principal
+    paint
+      ..color = onda.color.withOpacity(opacidadBase)
+      ..strokeWidth = onda.grosor
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3);
+    canvas.drawPath(path, paint);
+
+    // Capas de glow
+    paint
+      ..color = onda.color.withOpacity(opacidadBase * 0.6)
+      ..strokeWidth = onda.grosor * 1.8
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8);
+    canvas.drawPath(path, paint);
+
+    paint
+      ..color = onda.color.withOpacity(opacidadBase * 0.35)
+      ..strokeWidth = onda.grosor * 3.5
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 14);
+    canvas.drawPath(path, paint);
+
+    paint
+      ..color = onda.color.withOpacity(opacidadBase * 0.15)
+      ..strokeWidth = onda.grosor * 5
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 20);
+    canvas.drawPath(path, paint);
   }
 
   @override
