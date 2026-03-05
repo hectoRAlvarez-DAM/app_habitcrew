@@ -1,0 +1,109 @@
+// Widgets/glassmorphism_card.dart
+import 'package:flutter/material.dart';
+import 'dart:ui';
+
+class GlassmorphismCard extends StatelessWidget {
+  final Widget child;
+  final VoidCallback? onTap;
+  final EdgeInsetsGeometry? padding;
+  final Color? color;
+
+  const GlassmorphismCard({
+    Key? key,
+    required this.child,
+    this.onTap,
+    this.padding,
+    this.color,
+  }) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: padding ?? const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: color ?? Colors.white.withOpacity(0.06),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: Colors.white.withOpacity(0.12),
+            width: 1,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF22C55E).withOpacity(0.06),
+              blurRadius: 20,
+              offset: const Offset(0, 10),
+            ),
+            BoxShadow(
+              color: Colors.black.withOpacity(0.6),
+              blurRadius: 12,
+              offset: const Offset(0, 5),
+            ),
+          ],
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(20),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+            child: Container(
+              color: Colors.white.withOpacity(0.02),
+              child: child,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class GlassmorphismSection extends StatelessWidget {
+  final String titulo;
+  final Widget contenido;
+  final VoidCallback? onVerTodos;
+
+  const GlassmorphismSection({
+    Key? key,
+    required this.titulo,
+    required this.contenido,
+    this.onVerTodos,
+  }) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                titulo,
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFFE6F7EA), // Texto claro verde suave
+                ),
+              ),
+              if (onVerTodos != null)
+                TextButton(
+                  onPressed: onVerTodos,
+                  style: TextButton.styleFrom(
+                    foregroundColor: const Color(0xFF7EE07A),
+                  ),
+                  child: const Text('Ver todos'),
+                ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24),
+          child: contenido,
+        ),
+      ],
+    );
+  }
+}
