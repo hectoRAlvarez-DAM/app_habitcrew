@@ -117,12 +117,28 @@ class Home extends StatelessWidget {
                               ),
                               borderRadius: BorderRadius.circular(16),
                             ),
-                            child: const Center(
-                              child: Text(
-                                '😊',
-                                style: TextStyle(fontSize: 28),
-                              ),
-                            ),
+                            // Aquí podrías cargar la imagen de perfil del usuario
+
+
+
+
+
+
+
+                            
+
+
+
+
+
+
+
+
+
+
+
+
+                            //
                           ),
                         ),
                       ],
