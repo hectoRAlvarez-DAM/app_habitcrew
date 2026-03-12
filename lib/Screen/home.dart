@@ -2,8 +2,12 @@
 import 'package:app_habitcrew/Widgets/animated_background.dart';
 import 'package:app_habitcrew/Widgets/glassmorphism_card.dart';
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import '../servicios/servei_auth.dart';
+import 'login_screen.dart';
 
-// Widget auxiliar para las secciones con título
+// Widget auxiliar para las secciones con título (sin cambios)
 class GlassmorphismSection extends StatelessWidget {
   final String titulo;
   final Widget contenido;
@@ -62,8 +66,77 @@ class GlassmorphismSection extends StatelessWidget {
   }
 }
 
-class Home extends StatelessWidget {
+class Home extends StatefulWidget {
   const Home({super.key});
+
+  @override
+  State<Home> createState() => _HomeState();
+}
+
+class _HomeState extends State<Home> {
+  String _userName = 'Usuario';
+  bool _isLoadingName = true; // Para mostrar indicador de carga
+
+  @override
+  void initState() {
+    super.initState();
+    _cargarNombreUsuario();
+  }
+
+  Future<void> _cargarNombreUsuario() async {
+    // Verificar que el widget siga montado antes de cualquier operación
+    if (!mounted) return;
+
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        final doc = await FirebaseFirestore.instance
+            .collection('usuaris')
+            .doc(user.uid)
+            .get();
+
+        if (mounted) { // Verificar nuevamente después del await
+          setState(() {
+            _userName = doc.data()?['nom'] ?? 'Usuario';
+            _isLoadingName = false;
+          });
+        }
+      } else {
+        if (mounted) {
+          setState(() {
+            _isLoadingName = false;
+          });
+        }
+      }
+    } catch (e) {
+      print('Error cargando nombre de usuario: $e');
+      if (mounted) {
+        setState(() {
+          _isLoadingName = false;
+        });
+        // Opcional: mostrar un snackbar
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error al cargar el perfil')),
+        );
+      }
+    }
+  }
+
+  Future<void> _cerrarSesion() async {
+    final ServeiAuth authService = ServeiAuth();
+    await authService.ferLogout();
+
+    // Solo navegar si el widget sigue montado
+    if (!mounted) return;
+
+    // Usar una única navegación para evitar duplicados
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (context) => const LoginScreen()),
+    );
+    // También podrías usar pushReplacementNamed si tienes rutas configuradas
+    // Navigator.pushReplacementNamed(context, '/login');
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -72,7 +145,7 @@ class Home extends StatelessWidget {
         child: SingleChildScrollView(
           child: Column(
             children: [
-              // Header con texto oscuro
+              // Header
               Container(
                 padding: const EdgeInsets.fromLTRB(24, 20, 24, 16),
                 child: Column(
@@ -80,71 +153,66 @@ class Home extends StatelessWidget {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
+                        // Saludo y subtítulo
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text(
-                              '¡Hola, Arnau! 👋',
-                              style: TextStyle(
-                                fontSize: 28,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
-                              ),
-                            ),
+                            _isLoadingName
+                                ? const SizedBox(
+                                    width: 150,
+                                    height: 36,
+                                    child: LinearProgressIndicator(
+                                      color: Colors.white,
+                                      backgroundColor: Colors.grey,
+                                    ),
+                                  )
+                                : Text(
+                                    '¡Hola, $_userName! 👋',
+                                    style: const TextStyle(
+                                      fontSize: 28,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.white,
+                                    ),
+                                  ),
                             const SizedBox(height: 4),
-                            Text(
+                            const Text(
                               'Tu progreso diario',
                               style: TextStyle(
                                 fontSize: 15,
-                                color: Colors.grey[400],
+                                color: Colors.grey,
                               ),
                             ),
                           ],
                         ),
+                        // Botón de logout mejorado
                         GlassmorphismCard(
-                          padding: const EdgeInsets.all(0),
-                          child: Container(
-                            width: 52,
-                            height: 52,
-                            decoration: BoxDecoration(
-                              gradient: const LinearGradient(
-                                colors: [
-                                  Color(0xFF22C55E),
-                                  Color(0xFF16A34A),
-                                ],
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
+                          padding: EdgeInsets.zero,
+                          child: InkWell(
+                            onTap: () => _mostrarDialogoCerrarSesion(),
+                            borderRadius: BorderRadius.circular(16),
+                            child: Container(
+                              width: 52,
+                              height: 52,
+                              decoration: BoxDecoration(
+                                gradient: const LinearGradient(
+                                  colors: [Color(0xFF22C55E), Color(0xFF16A34A)],
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                ),
+                                borderRadius: BorderRadius.circular(16),
                               ),
-                              borderRadius: BorderRadius.circular(16),
+                              child: const Icon(
+                                Icons.logout,
+                                color: Colors.white,
+                                size: 28,
+                              ),
                             ),
-                            // Aquí podrías cargar la imagen de perfil del usuario
-
-
-
-
-
-
-
-                            
-
-
-
-
-
-
-
-
-
-
-
-
-                            //
                           ),
                         ),
                       ],
                     ),
                     const SizedBox(height: 20),
-                    
+
                     // Tarjeta de resumen de XP
                     GlassmorphismCard(
                       child: Padding(
@@ -164,7 +232,7 @@ class Home extends StatelessWidget {
               ),
 
               const SizedBox(height: 16),
-              
+
               // Sección Tu progreso
               GlassmorphismSection(
                 titulo: 'Tu progreso',
@@ -203,24 +271,9 @@ class Home extends StatelessWidget {
                 },
                 contenido: Column(
                   children: [
-                    _buildHabitItem(
-                      'Meditar',
-                      '🌅',
-                      true,
-                      () {},
-                    ),
-                    _buildHabitItem(
-                      'Beber agua',
-                      '💧',
-                      false,
-                      () {},
-                    ),
-                    _buildHabitItem(
-                      'Leer 30 min',
-                      '📚',
-                      false,
-                      () {},
-                    ),
+                    _buildHabitItem('Meditar', '🌅', true, () {}),
+                    _buildHabitItem('Beber agua', '💧', false, () {}),
+                    _buildHabitItem('Leer 30 min', '📚', false, () {}),
                   ],
                 ),
               ),
@@ -287,6 +340,29 @@ class Home extends StatelessWidget {
     );
   }
 
+  void _mostrarDialogoCerrarSesion() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Cerrar sesión'),
+        content: const Text('¿Estás seguro de que deseas cerrar sesión?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancelar'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _cerrarSesion();
+            },
+            child: const Text('Cerrar sesión'),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildXpStat(String label, String value, String emoji) {
     return Column(
       children: [
@@ -296,10 +372,7 @@ class Home extends StatelessWidget {
             color: const Color(0xFF22C55E).withOpacity(0.12),
             borderRadius: BorderRadius.circular(12),
           ),
-          child: Text(
-            emoji,
-            style: const TextStyle(fontSize: 20),
-          ),
+          child: Text(emoji, style: const TextStyle(fontSize: 20)),
         ),
         const SizedBox(height: 8),
         Text(
@@ -312,10 +385,7 @@ class Home extends StatelessWidget {
         ),
         Text(
           label,
-          style: TextStyle(
-            fontSize: 12,
-            color: Colors.grey[400],
-          ),
+          style: TextStyle(fontSize: 12, color: Colors.grey[400]),
         ),
       ],
     );
@@ -362,19 +432,13 @@ class Home extends StatelessWidget {
                       const SizedBox(height: 2),
                       Text(
                         value,
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: Colors.grey[400],
-                        ),
+                        style: TextStyle(fontSize: 13, color: Colors.grey[400]),
                       ),
                     ],
                   ),
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 5,
-                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                   decoration: BoxDecoration(
                     color: color.withOpacity(0.15),
                     borderRadius: BorderRadius.circular(20),
@@ -415,9 +479,9 @@ class Home extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: completed 
-                ? const Color(0xFF22C55E).withOpacity(0.14)
-                : Colors.transparent,
+              color: completed
+                  ? const Color(0xFF22C55E).withOpacity(0.14)
+                  : Colors.transparent,
               borderRadius: BorderRadius.circular(12),
             ),
             child: Text(emoji, style: const TextStyle(fontSize: 20)),

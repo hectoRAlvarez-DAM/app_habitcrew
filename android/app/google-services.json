@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "549163060771",
+    "project_id": "habitcrewdam",
+    "storage_bucket": "habitcrewdam.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:549163060771:android:9bc3238d6c882cacc16b96",
+        "android_client_info": {
+          "package_name": "com.example.app_habitcrew"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCRmjmK0ftlxjwjTim-W6tP4bp5yt7hMhY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

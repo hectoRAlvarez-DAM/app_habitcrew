@@ -1,4 +1,6 @@
 import 'package:app_habitcrew/Screen/MainScreen.dart';
+import 'package:app_habitcrew/Screen/login_screen.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 class Pantallacarrega extends StatefulWidget {
@@ -35,10 +37,24 @@ class _PantallacarregaState extends State<Pantallacarrega>
     
     
     Future.delayed(const Duration(seconds: 4), () {
-      Navigator.pushReplacement(
-        context, 
-        MaterialPageRoute(builder: (context) => const MainScreen()),
-      );
+      // Verificar si hay un usuario logueado
+      User? currentUser = FirebaseAuth.instance.currentUser;
+      
+      if (mounted) {
+        if (currentUser != null) {
+          // Usuario logueado, ir a MainScreen
+          Navigator.pushReplacement(
+            context, 
+            MaterialPageRoute(builder: (context) => const MainScreen()),
+          );
+        } else {
+          // No hay usuario logueado, ir a LoginScreen
+          Navigator.pushReplacement(
+            context, 
+            MaterialPageRoute(builder: (context) => const LoginScreen()),
+          );
+        }
+      }
     });
   }
   
