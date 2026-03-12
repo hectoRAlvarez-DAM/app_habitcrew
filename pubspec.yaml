@@ -13,6 +13,7 @@ dependencies:
   particles_flutter: ^2.0.0
   iconify_flutter: ^0.0.7
   flutter_custom_clippers: ^2.1.0
+  confetti: ^0.8.0
 
 dev_dependencies:
   flutter_test:
