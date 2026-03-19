@@ -1,13 +1,308 @@
-
 import 'package:flutter/material.dart';
+import 'package:app_habitcrew/Widgets/animated_background.dart';
+import 'package:app_habitcrew/Widgets/glassmorphism_card.dart';
 
-class Shop extends StatelessWidget {
+
+class Shop extends StatefulWidget {
   const Shop({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return const Center(  
-      child: Text('Hello World! - Shop'),
+  State<Shop> createState() => _ShopState();
+}
+
+class _ShopState extends State<Shop> with SingleTickerProviderStateMixin {
+  late TabController _tabController;
+
+  // Saldo del usuario (simulado)
+  int userCoins = 500;
+
+  // Productos por categoría
+  final List<StoreItem> banners = [
+    StoreItem(id: 'b1', name: 'Atardecer', price: 100, icon: Icons.landscape, color: Colors.orange),
+    StoreItem(id: 'b2', name: 'Noche estrellada', price: 150, icon: Icons.nightlight_round, color: Colors.indigo),
+    StoreItem(id: 'b3', name: 'Bosque', price: 120, icon: Icons.forest, color: Colors.green),
+    StoreItem(id: 'b4', name: 'Océano', price: 130, icon: Icons.waves, color: Colors.blue),
+  ];
+
+  final List<StoreItem> avatars = [
+    StoreItem(id: 'a1', name: 'Aventurero', price: 80, icon: Icons.person, color: Colors.amber),
+    StoreItem(id: 'a2', name: 'Mago', price: 120, icon: Icons.auto_awesome, color: Colors.purple),
+    StoreItem(id: 'a3', name: 'Guerrero', price: 100, icon: Icons.shield, color: Colors.red),
+    StoreItem(id: 'a4', name: 'Explorador', price: 90, icon: Icons.explore, color: Colors.teal),
+  ];
+
+  final List<StoreItem> backgrounds = [
+    StoreItem(id: 'bg1', name: 'Abstracto', price: 110, icon: Icons.blur_circular, color: Colors.pink),
+    StoreItem(id: 'bg2', name: 'Geométrico', price: 140, icon: Icons.category, color: Colors.cyan),
+    StoreItem(id: 'bg3', name: 'Galaxia', price: 200, icon: Icons.star, color: Colors.deepPurple),
+    StoreItem(id: 'bg4', name: 'Minimalista', price: 90, icon: Icons.circle, color: Colors.grey),
+  ];
+
+  // IDs de productos comprados (simula propiedad)
+  final Set<String> purchasedIds = {};
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 3, vsync: this);
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  // Método de compra
+  void _buyItem(StoreItem item) {
+    if (purchasedIds.contains(item.id)) {
+      _showMessage('Ya tienes este artículo');
+      return;
+    }
+    if (userCoins < item.price) {
+      _showMessage('No tienes suficientes monedas', isError: true);
+      return;
+    }
+
+    // Diálogo de confirmación
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Confirmar compra'),
+        content: Text('¿Comprar ${item.name} por ${item.price} monedas?'),
+        backgroundColor: const Color(0xFF2B2D31),
+        titleTextStyle: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+        contentTextStyle: const TextStyle(color: Colors.white70),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancelar', style: TextStyle(color: Colors.grey)),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              setState(() {
+                userCoins -= item.price;
+                purchasedIds.add(item.id);
+              });
+              _showMessage('¡Compra realizada!');
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF22C55E),
+            ),
+            child: const Text('Comprar'),
+          ),
+        ],
+      ),
     );
   }
+
+  void _showMessage(String msg, {bool isError = false}) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(msg),
+        backgroundColor: isError ? Colors.red : const Color(0xFF22C55E),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: Scaffold(
+        backgroundColor: Colors.transparent,
+        body: AnimatedBackground(
+          child: SafeArea(
+            child: Column(
+              children: [
+                // Header con título y saldo
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(24, 20, 24, 16),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'Tienda',
+                        style: TextStyle(
+                          fontSize: 28,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                      GlassmorphismCard(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.monetization_on, color: Color(0xFFFFD700), size: 24),
+                            const SizedBox(width: 8),
+                            Text(
+                              '$userCoins',
+                              style: const TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                // Pestañas
+                Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 24),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.05),
+                    borderRadius: BorderRadius.circular(30),
+                  ),
+                  child: TabBar(
+                    controller: _tabController,
+                    indicator: BoxDecoration(
+                      borderRadius: BorderRadius.circular(30),
+                      color: const Color(0xFF22C55E).withOpacity(0.3),
+                    ),
+                    labelColor: Colors.white,
+                    unselectedLabelColor: Colors.grey,
+                    tabs: const [
+                      Tab(text: 'Banners'),
+                      Tab(text: 'Avatares'),
+                      Tab(text: 'Fondos'),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 16),
+
+                // Contenido de las pestañas
+                Expanded(
+                  child: TabBarView(
+                    controller: _tabController,
+                    children: [
+                      _buildGrid(banners),
+                      _buildGrid(avatars),
+                      _buildGrid(backgrounds),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        
+      ),
+    );
+  }
+
+  Widget _buildGrid(List<StoreItem> items) {
+    return GridView.builder(
+      padding: const EdgeInsets.all(24),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        childAspectRatio: 0.75,
+        crossAxisSpacing: 16,
+        mainAxisSpacing: 16,
+      ),
+      itemCount: items.length,
+      itemBuilder: (ctx, index) {
+        final item = items[index];
+        final isPurchased = purchasedIds.contains(item.id);
+        return _buildStoreItemCard(item, isPurchased);
+      },
+    );
+  }
+
+  Widget _buildStoreItemCard(StoreItem item, bool isPurchased) {
+    return GlassmorphismCard(
+      onTap: isPurchased ? null : () => _buyItem(item),
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            // Vista previa
+            Expanded(
+              child: Container(
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  color: item.color.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Icon(
+                  item.icon,
+                  color: item.color,
+                  size: 50,
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+            // Nombre
+            Text(
+              item.name,
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w600,
+                fontSize: 16,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 4),
+            // Precio o estado
+            if (isPurchased)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.green.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: const Text(
+                  'ADQUIRIDO',
+                  style: TextStyle(
+                    color: Colors.green,
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              )
+            else
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.monetization_on, color: Color(0xFFFFD700), size: 16),
+                  const SizedBox(width: 4),
+                  Text(
+                    '${item.price}',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 14,
+                    ),
+                  ),
+                ],
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// Modelo de producto
+class StoreItem {
+  final String id;
+  final String name;
+  final int price;
+  final IconData icon;
+  final Color color;
+
+  StoreItem({
+    required this.id,
+    required this.name,
+    required this.price,
+    required this.icon,
+    required this.color,
+  });
 }

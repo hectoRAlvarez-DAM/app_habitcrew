@@ -1,8 +1,45 @@
 import 'package:app_habitcrew/Widgets/animated_background.dart';
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
-class Profile extends StatelessWidget {
+class Profile extends StatefulWidget {
   const Profile({super.key});
+
+  @override
+  State<Profile> createState() => _ProfileState();
+}
+
+class _ProfileState extends State<Profile> {
+  String _userName = 'Usuario';
+  String _userEmail = 'email@ejemplo.com';
+
+  @override
+  void initState() {
+    super.initState();
+    _cargarDatosUsuario();
+  }
+
+  Future<void> _cargarDatosUsuario() async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        final doc = await FirebaseFirestore.instance
+            .collection('usuaris')
+            .doc(user.uid)
+            .get();
+
+        if (doc.exists) {
+          setState(() {
+            _userName = doc['nom'] ?? 'Usuario';
+            _userEmail = user.email ?? 'email@ejemplo.com';
+          });
+        }
+      }
+    } catch (e) {
+      print('Error cargando datos de usuario: $e');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -108,9 +145,9 @@ class Profile extends StatelessWidget {
                         children: [
                           Row(
                             children: [
-                              const Text(
-                                'María González',
-                                style: TextStyle(
+                              Text(
+                                _userName,
+                                style: const TextStyle(
                                   fontSize: 24,
                                   fontWeight: FontWeight.bold,
                                   color: Colors.white,
@@ -149,9 +186,9 @@ class Profile extends StatelessWidget {
                                 ),
                               ),
                               const SizedBox(width: 6),
-                              const Text(
-                                '@mariagonzalez',
-                                style: TextStyle(
+                              Text(
+                                _userEmail,
+                                style: const TextStyle(
                                   fontSize: 14,
                                   color: Colors.white70,
                                 ),

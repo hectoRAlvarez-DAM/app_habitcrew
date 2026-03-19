@@ -5,6 +5,10 @@ import '../widgets/duolingo_button.dart';
 import '../widgets/duolingo_logo.dart';
 import '../widgets/duolingo_textfield.dart';
 import '../widgets/responsive_utils.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import '../servicios/servei_auth.dart';
+import 'MainScreen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -82,20 +86,79 @@ class _LoginScreenState extends State<LoginScreen>
       if (!mounted) return;
 
       setState(() => _isLoading = true);
-      await Future.delayed(const Duration(seconds: 2));
+      
+      final ServeiAuth authService = ServeiAuth();
+      String? error;
+      
+      try {
+        if (_isLoginMode) {
+          // Modo Login
+          error = await authService.iniciarSesionAmbEmailPassword(
+            _emailController.text.trim(),
+            _passwordController.text.trim(),
+          );
+        } else {
+          // Modo Registro
+          error = await authService.registrarUsuariAmbEmailPassword(
+            _emailController.text.trim(),
+            _passwordController.text.trim(),
+            _usernameController.text.trim(),
+          );
+        }
 
-      if (!mounted) return;
-      setState(() => _isLoading = false);
+        if (!mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            _isLoginMode ? '¡Bienvenido! 🎉' : '¡Cuenta creada! 🚀',
-            style: const TextStyle(color: AppColors.textWhite),
+        if (error == null) {
+          // Éxito
+          if (!mounted) return;
+          
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                _isLoginMode ? '¡Bienvenido! 🎉' : '¡Cuenta creada! 🚀',
+                style: const TextStyle(color: AppColors.textWhite),
+              ),
+              backgroundColor: AppColors.success,
+            ),
+          );
+
+          // Navegar a MainScreen después de 1 segundo
+          await Future.delayed(const Duration(seconds: 1));
+          
+          if (!mounted) return;
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => const MainScreen()),
+          );
+        } else {
+          // Error
+          if (!mounted) return;
+          setState(() => _isLoading = false);
+          
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                error,
+                style: const TextStyle(color: Colors.white),
+              ),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      } catch (e) {
+        if (!mounted) return;
+        setState(() => _isLoading = false);
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Error: ${e.toString()}',
+              style: const TextStyle(color: Colors.white),
+            ),
+            backgroundColor: Colors.red,
           ),
-          backgroundColor: AppColors.success,
-        ),
-      );
+        );
+      }
     }
   }
 
