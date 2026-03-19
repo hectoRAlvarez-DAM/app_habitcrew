@@ -2,6 +2,7 @@ import 'package:app_habitcrew/Screen/MainScreen.dart';
 import 'package:app_habitcrew/Screen/login_screen.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:simple_animations/simple_animations.dart';
 
 class Pantallacarrega extends StatefulWidget {
   const Pantallacarrega({super.key});
@@ -10,31 +11,11 @@ class Pantallacarrega extends StatefulWidget {
   State<Pantallacarrega> createState() => _PantallacarregaState();
 }
 
-class _PantallacarregaState extends State<Pantallacarrega> 
-    with SingleTickerProviderStateMixin {
-  
-  late AnimationController _controller;
-  late Animation<Offset> _positionAnimation;
+class _PantallacarregaState extends State<Pantallacarrega> {
   
   @override
   void initState() {
     super.initState();
-    
-    _controller = AnimationController(
-      duration: const Duration(seconds: 2),
-      vsync: this,
-    );
-    
-    _positionAnimation = Tween<Offset>(
-      begin: const Offset(0.0, -2.0),
-      end: const Offset(0.0, 0.0),
-    ).animate(CurvedAnimation(
-      parent: _controller,
-      curve: Curves.bounceOut,
-    ));
-    
-    _controller.forward();
-    
     
     Future.delayed(const Duration(seconds: 4), () {
       // Verificar si hay un usuario logueado
@@ -59,37 +40,50 @@ class _PantallacarregaState extends State<Pantallacarrega>
   }
   
   @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-  
-  @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.blue,
+      backgroundColor: Colors.black,
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            SlideTransition(
-              position: _positionAnimation,
-              child: Container(
-                width: 400,
-                height: 400,
-                decoration: const BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: Colors.transparent,
-                ),
-                child: ClipOval(
-                  child: Image.asset(
-                    'assets/habitCrewCarga.png',
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) => 
-                      const Icon(Icons.image, size: 50),
+            // Animación con tonos de verde más suaves
+            PlayAnimationBuilder<double>(
+              tween: Tween(begin: 0.0, end: 1.0),
+              duration: const Duration(seconds: 3),
+              curve: Curves.easeInOut,
+              builder: (context, value, child) {
+                return Container(
+                  width: 400,
+                  height: 400,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: RadialGradient(
+                      center: Alignment.center,
+                      radius: 0.3 + (value * 0.7),
+                      colors: [
+                        // Tonos de verde mucho más suaves con opacidades reducidas
+                        Colors.green.withOpacity(0.25 * value),  // Muy sutil
+                        Colors.green.withOpacity(0.15 * value),
+                        Colors.green.withOpacity(0.05 * value),
+                        Colors.transparent,
+                      ],
+                      stops: const [0.0, 0.3, 0.7, 1.0],
+                    ),
                   ),
-                ),
-              ),
+                  child: Opacity(
+                    opacity: value,
+                    child: ClipOval(
+                      child: Image.asset(
+                        'assets/habitCrewCargaNBG.png',
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) => 
+                          const Icon(Icons.image, size: 50, color: Colors.white),
+                      ),
+                    ),
+                  ),
+                );
+              },
             ),
             const SizedBox(height: 30),
             const Text(

@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:app_habitcrew/Widgets/animated_background.dart';
 import 'package:app_habitcrew/Widgets/glassmorphism_card.dart';
 
-
 class Shop extends StatefulWidget {
   const Shop({super.key});
 
@@ -18,24 +17,96 @@ class _ShopState extends State<Shop> with SingleTickerProviderStateMixin {
 
   // Productos por categoría
   final List<StoreItem> banners = [
-    StoreItem(id: 'b1', name: 'Atardecer', price: 100, icon: Icons.landscape, color: Colors.orange),
-    StoreItem(id: 'b2', name: 'Noche estrellada', price: 150, icon: Icons.nightlight_round, color: Colors.indigo),
-    StoreItem(id: 'b3', name: 'Bosque', price: 120, icon: Icons.forest, color: Colors.green),
-    StoreItem(id: 'b4', name: 'Océano', price: 130, icon: Icons.waves, color: Colors.blue),
+    StoreItem(
+      id: 'b1',
+      name: 'Atardecer',
+      price: 100,
+      icon: Icons.landscape,
+      color: Colors.orange,
+    ),
+    StoreItem(
+      id: 'b2',
+      name: 'Noche estrellada',
+      price: 150,
+      icon: Icons.nightlight_round,
+      color: Colors.indigo,
+    ),
+    StoreItem(
+      id: 'b3',
+      name: 'Bosque',
+      price: 120,
+      icon: Icons.forest,
+      color: Colors.green,
+    ),
+    StoreItem(
+      id: 'b4',
+      name: 'Océano',
+      price: 130,
+      icon: Icons.waves,
+      color: Colors.blue,
+    ),
   ];
 
   final List<StoreItem> avatars = [
-    StoreItem(id: 'a1', name: 'Aventurero', price: 80, icon: Icons.person, color: Colors.amber),
-    StoreItem(id: 'a2', name: 'Mago', price: 120, icon: Icons.auto_awesome, color: Colors.purple),
-    StoreItem(id: 'a3', name: 'Guerrero', price: 100, icon: Icons.shield, color: Colors.red),
-    StoreItem(id: 'a4', name: 'Explorador', price: 90, icon: Icons.explore, color: Colors.teal),
+    StoreItem(
+      id: 'a1',
+      name: 'Aventurero',
+      price: 80,
+      icon: Icons.person,
+      color: Colors.amber,
+    ),
+    StoreItem(
+      id: 'a2',
+      name: 'Mago',
+      price: 120,
+      icon: Icons.auto_awesome,
+      color: Colors.purple,
+    ),
+    StoreItem(
+      id: 'a3',
+      name: 'Guerrero',
+      price: 100,
+      icon: Icons.shield,
+      color: Colors.red,
+    ),
+    StoreItem(
+      id: 'a4',
+      name: 'Explorador',
+      price: 90,
+      icon: Icons.explore,
+      color: Colors.teal,
+    ),
   ];
 
   final List<StoreItem> backgrounds = [
-    StoreItem(id: 'bg1', name: 'Abstracto', price: 110, icon: Icons.blur_circular, color: Colors.pink),
-    StoreItem(id: 'bg2', name: 'Geométrico', price: 140, icon: Icons.category, color: Colors.cyan),
-    StoreItem(id: 'bg3', name: 'Galaxia', price: 200, icon: Icons.star, color: Colors.deepPurple),
-    StoreItem(id: 'bg4', name: 'Minimalista', price: 90, icon: Icons.circle, color: Colors.grey),
+    StoreItem(
+      id: 'bg1',
+      name: 'Abstracto',
+      price: 110,
+      icon: Icons.blur_circular,
+      color: Colors.pink,
+    ),
+    StoreItem(
+      id: 'bg2',
+      name: 'Geométrico',
+      price: 140,
+      icon: Icons.category,
+      color: Colors.cyan,
+    ),
+    StoreItem(
+      id: 'bg3',
+      name: 'Galaxia',
+      price: 200,
+      icon: Icons.star,
+      color: Colors.deepPurple,
+    ),
+    StoreItem(
+      id: 'bg4',
+      name: 'Minimalista',
+      price: 90,
+      icon: Icons.circle,
+      color: Colors.grey,
+    ),
   ];
 
   // IDs de productos comprados (simula propiedad)
@@ -71,7 +142,11 @@ class _ShopState extends State<Shop> with SingleTickerProviderStateMixin {
         title: const Text('Confirmar compra'),
         content: Text('¿Comprar ${item.name} por ${item.price} monedas?'),
         backgroundColor: const Color(0xFF2B2D31),
-        titleTextStyle: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+        titleTextStyle: const TextStyle(
+          color: Colors.white,
+          fontSize: 18,
+          fontWeight: FontWeight.bold,
+        ),
         contentTextStyle: const TextStyle(color: Colors.white70),
         actions: [
           TextButton(
@@ -133,10 +208,17 @@ class _ShopState extends State<Shop> with SingleTickerProviderStateMixin {
                         ),
                       ),
                       GlassmorphismCard(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 8,
+                        ),
                         child: Row(
                           children: [
-                            const Icon(Icons.monetization_on, color: Color(0xFFFFD700), size: 24),
+                            const Icon(
+                              Icons.monetization_on,
+                              color: Color(0xFFFFD700),
+                              size: 24,
+                            ),
                             const SizedBox(width: 8),
                             Text(
                               '$userCoins',
@@ -162,12 +244,25 @@ class _ShopState extends State<Shop> with SingleTickerProviderStateMixin {
                   ),
                   child: TabBar(
                     controller: _tabController,
+                    // ESTA ES LA CLAVE: Hace que el indicador ocupe todo el ancho del espacio del tab
+                    indicatorSize: TabBarIndicatorSize.tab,
                     indicator: BoxDecoration(
                       borderRadius: BorderRadius.circular(30),
                       color: const Color(0xFF22C55E).withOpacity(0.3),
+                      // Opcional: Puedes añadir un pequeño borde o sombra si quieres que parezca más una "luz"
+                      border: Border.all(
+                        color: const Color(0xFF22C55E).withOpacity(0.5),
+                        width: 1,
+                      ),
                     ),
                     labelColor: Colors.white,
+                    labelStyle: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 15,
+                    ), // Texto un poco más definido
                     unselectedLabelColor: Colors.grey,
+                    // Eliminamos el padding interno de las etiquetas para que el indicador tenga más aire
+                    labelPadding: const EdgeInsets.symmetric(horizontal: 0),
                     tabs: const [
                       Tab(text: 'Banners'),
                       Tab(text: 'Avatares'),
@@ -193,7 +288,6 @@ class _ShopState extends State<Shop> with SingleTickerProviderStateMixin {
             ),
           ),
         ),
-        
       ),
     );
   }
@@ -232,11 +326,7 @@ class _ShopState extends State<Shop> with SingleTickerProviderStateMixin {
                   color: item.color.withOpacity(0.2),
                   borderRadius: BorderRadius.circular(16),
                 ),
-                child: Icon(
-                  item.icon,
-                  color: item.color,
-                  size: 50,
-                ),
+                child: Icon(item.icon, color: item.color, size: 50),
               ),
             ),
             const SizedBox(height: 8),
@@ -254,7 +344,10 @@ class _ShopState extends State<Shop> with SingleTickerProviderStateMixin {
             // Precio o estado
             if (isPurchased)
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 4,
+                ),
                 decoration: BoxDecoration(
                   color: Colors.green.withOpacity(0.2),
                   borderRadius: BorderRadius.circular(20),
@@ -272,14 +365,15 @@ class _ShopState extends State<Shop> with SingleTickerProviderStateMixin {
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Icon(Icons.monetization_on, color: Color(0xFFFFD700), size: 16),
+                  const Icon(
+                    Icons.monetization_on,
+                    color: Color(0xFFFFD700),
+                    size: 16,
+                  ),
                   const SizedBox(width: 4),
                   Text(
                     '${item.price}',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 14,
-                    ),
+                    style: const TextStyle(color: Colors.white, fontSize: 14),
                   ),
                 ],
               ),
