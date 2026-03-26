@@ -1,6 +1,7 @@
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'habit_service.dart';
 
 class ServeiAuth {
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -20,9 +21,12 @@ class ServeiAuth {
           "uid": uid,
           "email": email,
           "nom": username,
-          "data_registre":FieldValue.serverTimestamp()
+          "data_registre": FieldValue.serverTimestamp(),
+          "totalHabitosCompletados": 0,
           }
         );
+        // Crear los 3 hábitos por defecto
+        await HabitService().crearHabitosDefecto();
       } catch (e) {
         // Si falla Firestore pero Auth fue exitoso, aún consideramos el registro exitoso
         print("Advertencia: No se pudieron guardar todos los datos en Firestore: $e");
