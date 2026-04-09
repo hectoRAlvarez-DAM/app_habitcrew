@@ -1,7 +1,10 @@
+import 'dart:async';
 import 'package:app_habitcrew/Widgets/animated_background.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../servicios/habit_service.dart';
+import 'models/habit.dart';
 
 class Profile extends StatefulWidget {
   const Profile({super.key});
@@ -11,33 +14,97 @@ class Profile extends StatefulWidget {
 }
 
 class _ProfileState extends State<Profile> {
-  String _userName = 'Usuario';
-  String _userEmail = 'email@ejemplo.com';
+  String _userName = '';
+  String _userEmail = '';
+  String _miembroDesde = '—';
+  int _totalCompletados = 0;
+
+  final HabitService _habitService = HabitService();
+  List<Habit> _habitos = [];
+  StreamSubscription<List<Habit>>? _habitSub;
 
   @override
   void initState() {
     super.initState();
     _cargarDatosUsuario();
+    _habitSub = _habitService.obtenerHabitos().listen(
+      (habitos) {
+        if (mounted) setState(() => _habitos = habitos);
+      },
+      onError: (e) => debugPrint('Error stream hábitos perfil: $e'),
+      cancelOnError: false,
+    );
+  }
+
+  @override
+  void dispose() {
+    _habitSub?.cancel();
+    super.dispose();
+  }
+
+  int get _mejorRacha => _habitos.isEmpty
+      ? 0
+      : _habitos.map((h) => h.rachaActual).reduce((a, b) => a > b ? a : b);
+
+  String _formatearFecha(DateTime fecha) {
+    const meses = [
+      'Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun',
+      'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'
+    ];
+    return '${meses[fecha.month - 1]} ${fecha.year}';
   }
 
   Future<void> _cargarDatosUsuario() async {
     try {
       final user = FirebaseAuth.instance.currentUser;
-      if (user != null) {
-        final doc = await FirebaseFirestore.instance
-            .collection('usuaris')
-            .doc(user.uid)
-            .get();
+      if (user == null) return;
 
-        if (doc.exists) {
-          setState(() {
-            _userName = doc['nom'] ?? 'Usuario';
-            _userEmail = user.email ?? 'email@ejemplo.com';
-          });
-        }
+      // El email siempre viene de Firebase Auth
+      if (mounted) setState(() => _userEmail = user.email ?? '');
+
+      final docRef = FirebaseFirestore.instance
+          .collection('usuaris')
+          .doc(user.uid);
+      var doc = await docRef.get();
+
+      // Si no existe el documento, lo creamos
+      if (!doc.exists) {
+        final nomFallback = user.email?.split('@')[0] ?? 'Usuario';
+        await docRef.set({
+          'uid': user.uid,
+          'email': user.email ?? '',
+          'nom': nomFallback,
+          'data_registre': FieldValue.serverTimestamp(),
+          'totalHabitosCompletados': 0,
+        });
+        doc = await docRef.get();
+        await _habitService.crearHabitosDefecto();
+      }
+
+      if (doc.exists && mounted) {
+        final data = doc.data()!;
+        final fechaRegistro =
+            (data['data_registre'] as Timestamp?)?.toDate();
+        final nom = data['nom'] as String?;
+        setState(() {
+          _userName = (nom != null && nom.isNotEmpty)
+              ? nom
+              : user.email?.split('@')[0] ?? 'Usuario';
+          _miembroDesde =
+              fechaRegistro != null ? _formatearFecha(fechaRegistro) : '—';
+          _totalCompletados =
+              (data['totalHabitosCompletados'] as num?)?.toInt() ?? 0;
+        });
       }
     } catch (e) {
-      print('Error cargando datos de usuario: $e');
+      debugPrint('Error cargando datos de usuario: $e');
+      final user = FirebaseAuth.instance.currentUser;
+      if (mounted && user != null) {
+        setState(() {
+          _userEmail = user.email ?? '';
+          _userName = user.email?.split('@')[0] ?? 'Usuario';
+        });
+      }
     }
   }
 
@@ -48,11 +115,10 @@ class _ProfileState extends State<Profile> {
         child: SingleChildScrollView(
           child: Column(
             children: [
-              // Banner de perfil estilo Discord
+              // Banner estilo Discord
               Stack(
                 clipBehavior: Clip.none,
                 children: [
-                  // Banner image
                   Container(
                     height: 150,
                     width: double.infinity,
@@ -61,7 +127,7 @@ class _ProfileState extends State<Profile> {
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
                         colors: [
-                          const Color(0xFF5865F2), // Discord blurple
+                          const Color(0xFF5865F2),
                           const Color(0xFF404EED),
                           const Color(0xFF23272A),
                         ],
@@ -89,8 +155,6 @@ class _ProfileState extends State<Profile> {
                       ],
                     ),
                   ),
-                  
-                  // Avatar superpuesto
                   Positioned(
                     bottom: -50,
                     left: 20,
@@ -99,10 +163,7 @@ class _ProfileState extends State<Profile> {
                       height: 100,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        border: Border.all(
-                          color: Colors.white,
-                          width: 4,
-                        ),
+                        border: Border.all(color: Colors.white, width: 4),
                         boxShadow: [
                           BoxShadow(
                             color: Colors.black.withOpacity(0.3),
@@ -112,29 +173,30 @@ class _ProfileState extends State<Profile> {
                         ],
                       ),
                       child: ClipOval(
-                        child: Image.network(
-                          'https://i.pravatar.cc/300',
-                          fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) {
-                            return Container(
-                              color: Colors.orange.shade200,
-                              child: const Icon(
-                                Icons.person,
-                                size: 50,
+                        child: Container(
+                          color: const Color(0xFF5865F2),
+                          child: Center(
+                            child: Text(
+                              _userName.isNotEmpty
+                                  ? _userName[0].toUpperCase()
+                                  : '?',
+                              style: const TextStyle(
                                 color: Colors.white,
+                                fontSize: 40,
+                                fontWeight: FontWeight.bold,
                               ),
-                            );
-                          },
+                            ),
+                          ),
                         ),
                       ),
                     ),
                   ),
                 ],
               ),
-              
-              const SizedBox(height: 60), // Espacio para el avatar
-              
-              // Información de usuario estilo Discord
+
+              const SizedBox(height: 60),
+
+              // Información de usuario
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 20),
                 child: Row(
@@ -146,7 +208,7 @@ class _ProfileState extends State<Profile> {
                           Row(
                             children: [
                               Text(
-                                _userName,
+                                _userName.isNotEmpty ? _userName : '...',
                                 style: const TextStyle(
                                   fontSize: 24,
                                   fontWeight: FontWeight.bold,
@@ -156,9 +218,7 @@ class _ProfileState extends State<Profile> {
                               const SizedBox(width: 8),
                               Container(
                                 padding: const EdgeInsets.symmetric(
-                                  horizontal: 6,
-                                  vertical: 2,
-                                ),
+                                    horizontal: 6, vertical: 2),
                                 decoration: BoxDecoration(
                                   color: const Color(0xFF5865F2),
                                   borderRadius: BorderRadius.circular(4),
@@ -187,7 +247,7 @@ class _ProfileState extends State<Profile> {
                               ),
                               const SizedBox(width: 6),
                               Text(
-                                _userEmail,
+                                _userEmail.isNotEmpty ? _userEmail : '...',
                                 style: const TextStyle(
                                   fontSize: 14,
                                   color: Colors.white70,
@@ -198,32 +258,26 @@ class _ProfileState extends State<Profile> {
                         ],
                       ),
                     ),
-                    
-                    // Botón de editar perfil
                     Container(
                       decoration: BoxDecoration(
                         color: const Color(0xFF4E5058).withOpacity(0.6),
                         borderRadius: BorderRadius.circular(8),
                         border: Border.all(
-                          color: Colors.white.withOpacity(0.1),
-                        ),
+                            color: Colors.white.withOpacity(0.1)),
                       ),
                       child: IconButton(
                         onPressed: () {},
-                        icon: const Icon(
-                          Icons.edit,
-                          color: Colors.white,
-                          size: 20,
-                        ),
+                        icon: const Icon(Icons.edit,
+                            color: Colors.white, size: 20),
                       ),
                     ),
                   ],
                 ),
               ),
-              
+
               const SizedBox(height: 20),
-              
-              // Badges / Insignias estilo Discord
+
+              // Badges
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 20),
                 child: Row(
@@ -236,10 +290,10 @@ class _ProfileState extends State<Profile> {
                   ],
                 ),
               ),
-              
+
               const SizedBox(height: 24),
-              
-              // Estadísticas estilo Discord
+
+              // Estadísticas reales
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 20),
                 child: Container(
@@ -248,26 +302,27 @@ class _ProfileState extends State<Profile> {
                     color: const Color(0xFF2B2D31),
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(
-                      color: Colors.white.withOpacity(0.05),
-                    ),
+                        color: Colors.white.withOpacity(0.05)),
                   ),
                   child: Column(
                     children: [
-                      _buildInfoRow('Miembro desde', 'Enero 2024'),
+                      _buildInfoRow('Miembro desde', _miembroDesde),
                       const Divider(color: Colors.white24, height: 16),
-                      _buildInfoRow('Hábitos completados', '127'),
+                      _buildInfoRow(
+                          'Hábitos completados', '$_totalCompletados'),
                       const Divider(color: Colors.white24, height: 16),
-                      _buildInfoRow('Racha actual', '45 días'),
+                      _buildInfoRow('Mejor racha', '$_mejorRacha días'),
                       const Divider(color: Colors.white24, height: 16),
-                      _buildInfoRow('Amigos', '12'),
+                      _buildInfoRow(
+                          'Hábitos activos', '${_habitos.length}'),
                     ],
                   ),
                 ),
               ),
-              
+
               const SizedBox(height: 30),
-              
-              // SECCIÓN DE LOGROS
+
+              // Logros
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 20),
                 child: Column(
@@ -283,12 +338,10 @@ class _ProfileState extends State<Profile> {
                       ),
                     ),
                     const SizedBox(height: 16),
-                    
                     LayoutBuilder(
                       builder: (context, constraints) {
-                        double screenWidth = constraints.maxWidth;
-                        int crossAxisCount = screenWidth > 600 ? 4 : 2;
-                        
+                        int crossAxisCount =
+                            constraints.maxWidth > 600 ? 4 : 2;
                         return GridView.count(
                           shrinkWrap: true,
                           physics: const NeverScrollableScrollPhysics(),
@@ -297,34 +350,19 @@ class _ProfileState extends State<Profile> {
                           crossAxisSpacing: 12,
                           childAspectRatio: 0.9,
                           children: [
-                            _buildAchievementGrid(
-                              'Madrugador',
-                              '7 días seguidos',
-                              Icons.wb_sunny,
-                              Colors.orange,
-                              100,
-                            ),
-                            _buildAchievementGrid(
-                              'En racha',
-                              '30 días de racha',
-                              Icons.local_fire_department,
-                              Colors.red,
-                              80,
-                            ),
-                            _buildAchievementGrid(
-                              'Social',
-                              '5 amigos',
-                              Icons.people,
-                              const Color.fromARGB(255, 8, 56, 95),
-                              60,
-                            ),
-                            _buildAchievementGrid(
-                              'Disciplina',
-                              '50 hábitos',
-                              Icons.auto_awesome,
-                              const Color.fromARGB(255, 49, 2, 58),
-                              40,
-                            ),
+                            _buildAchievementGrid('Madrugador',
+                                '7 días seguidos', Icons.wb_sunny,
+                                Colors.orange, 100),
+                            _buildAchievementGrid('En racha',
+                                '30 días de racha',
+                                Icons.local_fire_department,
+                                Colors.red, 80),
+                            _buildAchievementGrid('Social', '5 amigos',
+                                Icons.people,
+                                const Color.fromARGB(255, 8, 56, 95), 60),
+                            _buildAchievementGrid('Disciplina', '50 hábitos',
+                                Icons.auto_awesome,
+                                const Color.fromARGB(255, 49, 2, 58), 40),
                           ],
                         );
                       },
@@ -332,69 +370,20 @@ class _ProfileState extends State<Profile> {
                   ],
                 ),
               ),
-              
+
               const SizedBox(height: 30),
-              
-              // SECCIÓN DE HÁBITOS FAVORITOS
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'HÁBITOS FAVORITOS',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white70,
-                        letterSpacing: 1.2,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    _buildHabitFavorite(
-                      'Meditación',
-                      '20 min diarios',
-                      Icons.self_improvement,
-                      Colors.purple.shade200,
-                      '90%',
-                    ),
-                    const SizedBox(height: 12),
-                    _buildHabitFavorite(
-                      'Ejercicio',
-                      '30 min diarios',
-                      Icons.fitness_center,
-                      Colors.green.shade200,
-                      '75%',
-                    ),
-                    const SizedBox(height: 12),
-                    _buildHabitFavorite(
-                      'Lectura',
-                      '15 páginas',
-                      Icons.menu_book,
-                      Colors.blue.shade200,
-                      '60%',
-                    ),
-                  ],
-                ),
-              ),
-              
-              const SizedBox(height: 30),
-              
-              // Botones de acción
+
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 20),
                 child: Column(
                   children: [
                     const SizedBox(height: 12),
                     _buildActionButton(
-                      'Configuración',
-                      Icons.settings,
-                      Colors.grey,
-                    ),
+                        'Configuración', Icons.settings, Colors.grey),
                   ],
                 ),
               ),
-              
+
               const SizedBox(height: 20),
             ],
           ),
@@ -403,29 +392,21 @@ class _ProfileState extends State<Profile> {
     );
   }
 
-  // Widgets estilo Discord para la parte superior
   Widget _buildBadge(IconData icon, String label, Color color) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
         color: const Color(0xFF2B2D31),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: Colors.white.withOpacity(0.1),
-        ),
+        border: Border.all(color: Colors.white.withOpacity(0.1)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(icon, color: color, size: 14),
           const SizedBox(width: 4),
-          Text(
-            label,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 12,
-            ),
-          ),
+          Text(label,
+              style: const TextStyle(color: Colors.white, fontSize: 12)),
         ],
       ),
     );
@@ -435,163 +416,57 @@ class _ProfileState extends State<Profile> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(
-          label,
-          style: TextStyle(
-            color: Colors.white.withOpacity(0.6),
-            fontSize: 14,
-          ),
-        ),
-        Text(
-          value,
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 14,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
+        Text(label,
+            style: TextStyle(
+                color: Colors.white.withOpacity(0.6), fontSize: 14)),
+        Text(value,
+            style: const TextStyle(
+                color: Colors.white,
+                fontSize: 14,
+                fontWeight: FontWeight.w500)),
       ],
     );
   }
 
-  // Widgets estilo Duolingo
-  Widget _buildAchievementGrid(String title, String subtitle, IconData icon, Color color, int progress) {
-    Color getSpotlightColor(Color baseColor) {
-      if (baseColor == Colors.red || baseColor == const Color(0xFFF44336)) {
-        return const Color(0xFFFF3D00);
-      } else if (baseColor == Colors.orange || baseColor == const Color(0xFFFF9800)) {
-        return const Color(0xFFFF6D00);
-      } else if (baseColor == Colors.blue || baseColor == const Color(0xFF2196F3) || baseColor == const Color.fromARGB(255, 8, 56, 95)) {
-        return const Color(0xFF2962FF);
-      } else if (baseColor == Colors.purple || baseColor == const Color(0xFF9C27B0) || baseColor == const Color.fromARGB(255, 49, 2, 58)) {
-        return const Color(0xFFAA00FF);
-      } else {
-        double r = baseColor.red.toDouble();
-        double g = baseColor.green.toDouble();
-        double b = baseColor.blue.toDouble();
-        
-        double max = r > g ? (r > b ? r : b) : (g > b ? g : b);
-        double factor = 255 / max;
-        
-        return Color.fromRGBO(
-          (r * factor).clamp(0, 255).toInt(),
-          (g * factor).clamp(0, 255).toInt(),
-          (b * factor).clamp(0, 255).toInt(),
-          1.0
-        );
-      }
-    }
-    
-    final Color spotlightColor = getSpotlightColor(color);
-    
+  Widget _buildAchievementGrid(String title, String subtitle, IconData icon,
+      Color color, int progress) {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.1),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: Colors.white.withOpacity(0.2),
-        ),
+        border: Border.all(color: Colors.white.withOpacity(0.2)),
       ),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Stack(
-            alignment: Alignment.center,
-            children: [
-              Container(
-                width: 72,
-                height: 72,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: RadialGradient(
-                    center: Alignment.center,
-                    radius: 0.9,
-                    colors: [
-                      color.withOpacity(0.0),
-                      color.withOpacity(0.2),
-                      color.withOpacity(0.05),
-                    ],
-                    stops: const [0.4, 0.8, 1.0],
-                  ),
-                ),
-              ),
-              
-              Container(
-                width: 60,
-                height: 60,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: RadialGradient(
-                    center: const Alignment(-0.45, -0.45),
-                    radius: 0.85,
-                    colors: [
-                      spotlightColor,
-                      color,
-                      color.withOpacity(0.5),
-                    ],
-                    stops: const [0.0, 0.4, 1.0],
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: color.withOpacity(0.4),
-                      blurRadius: 10,
-                      spreadRadius: 1,
-                    ),
-                    BoxShadow(
-                      color: Colors.white.withOpacity(0.3),
-                      blurRadius: 8,
-                      spreadRadius: 0,
-                      offset: const Offset(-2, -2),
-                    ),
-                  ],
-                ),
-                child: Icon(
-                  icon,
-                  color: Colors.white,
-                  size: 30,
-                ),
-              ),
-              
-              Positioned(
-                top: 10,
-                left: 10,
-                child: Container(
-                  width: 15,
-                  height: 15,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: RadialGradient(
-                      colors: [
-                        Colors.white.withOpacity(0.7),
-                        Colors.white.withOpacity(0.0),
-                      ],
-                      stops: const [0.0, 0.8],
-                    ),
-                  ),
-                ),
-              ),
-            ],
+          Container(
+            width: 60,
+            height: 60,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: color.withOpacity(0.3),
+              boxShadow: [
+                BoxShadow(
+                    color: color.withOpacity(0.4),
+                    blurRadius: 10,
+                    spreadRadius: 1),
+              ],
+            ),
+            child: Icon(icon, color: Colors.white, size: 30),
           ),
           const SizedBox(height: 8),
-          Text(
-            title,
-            style: const TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.bold,
-              fontSize: 14,
-            ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-          Text(
-            subtitle,
-            style: TextStyle(
-              color: Colors.white.withOpacity(0.6),
-              fontSize: 11,
-            ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
+          Text(title,
+              style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis),
+          Text(subtitle,
+              style: TextStyle(
+                  color: Colors.white.withOpacity(0.6), fontSize: 11),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis),
           const SizedBox(height: 8),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -611,88 +486,11 @@ class _ProfileState extends State<Profile> {
                     height: 4,
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(2),
-                      gradient: LinearGradient(
-                        colors: [
-                          spotlightColor.withOpacity(0.8),
-                          color,
-                          Colors.white.withOpacity(0.8),
-                        ],
-                        stops: const [0.0, 0.5, 1.0],
-                      ),
+                      color: color,
                     ),
                   ),
                 ),
               ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildHabitFavorite(String name, String time, IconData icon, Color color, String progress) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: Colors.white.withOpacity(0.2),
-        ),
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: color.withOpacity(0.3),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(
-              icon,
-              color: color,
-              size: 24,
-            ),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  name,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                Text(
-                  time,
-                  style: TextStyle(
-                    color: Colors.white.withOpacity(0.6),
-                    fontSize: 12,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Container(
-            padding: const EdgeInsets.symmetric(
-              horizontal: 12,
-              vertical: 6,
-            ),
-            decoration: BoxDecoration(
-              color: color.withOpacity(0.3),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Text(
-              progress,
-              style: TextStyle(
-                color: color,
-                fontWeight: FontWeight.bold,
-                fontSize: 14,
-              ),
             ),
           ),
         ],
@@ -705,9 +503,7 @@ class _ProfileState extends State<Profile> {
       width: double.infinity,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: Colors.white.withOpacity(0.2),
-        ),
+        border: Border.all(color: Colors.white.withOpacity(0.2)),
       ),
       child: ElevatedButton(
         onPressed: () {},
@@ -717,21 +513,16 @@ class _ProfileState extends State<Profile> {
           elevation: 0,
           padding: const EdgeInsets.symmetric(vertical: 16),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
+              borderRadius: BorderRadius.circular(16)),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(icon, color: color),
             const SizedBox(width: 8),
-            Text(
-              text,
-              style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
+            Text(text,
+                style: const TextStyle(
+                    fontSize: 16, fontWeight: FontWeight.w500)),
           ],
         ),
       ),
@@ -739,7 +530,6 @@ class _ProfileState extends State<Profile> {
   }
 }
 
-// Painter para patrón de fondo estilo Discord
 class DiscordPatternPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
@@ -747,13 +537,8 @@ class DiscordPatternPainter extends CustomPainter {
       ..color = Colors.white.withOpacity(0.03)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1;
-
     for (double i = -size.height; i < size.width + size.height; i += 30) {
-      canvas.drawLine(
-        Offset(i, 0),
-        Offset(i - size.height, size.height),
-        paint,
-      );
+      canvas.drawLine(Offset(i, 0), Offset(i - size.height, size.height), paint);
     }
   }
 

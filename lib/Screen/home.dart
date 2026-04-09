@@ -1,13 +1,14 @@
-// home.dart
+import 'dart:async';
 import 'package:app_habitcrew/Widgets/animated_background.dart';
 import 'package:app_habitcrew/Widgets/glassmorphism_card.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../servicios/servei_auth.dart';
+import '../servicios/habit_service.dart';
+import 'models/habit.dart';
 import 'login_screen.dart';
 
-// Widget auxiliar para las secciones con título (sin cambios)
 class GlassmorphismSection extends StatelessWidget {
   final String titulo;
   final Widget contenido;
@@ -47,10 +48,7 @@ class GlassmorphismSection extends StatelessWidget {
                   ),
                   child: Text(
                     'Ver todos',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.grey[400],
-                    ),
+                    style: TextStyle(fontSize: 14, color: Colors.grey[400]),
                   ),
                 ),
             ],
@@ -74,69 +72,126 @@ class Home extends StatefulWidget {
 }
 
 class _HomeState extends State<Home> {
-  String _userName = 'Usuario';
-  bool _isLoadingName = true; // Para mostrar indicador de carga
+  String _userName = '';
+  bool _isLoadingName = true;
+
+  final HabitService _habitService = HabitService();
+  List<Habit> _habitos = [];
+  StreamSubscription<List<Habit>>? _habitSub;
 
   @override
   void initState() {
     super.initState();
     _cargarNombreUsuario();
+    _habitService.crearHabitosDefecto();
+    _habitSub = _habitService.obtenerHabitos().listen(
+      (habitos) {
+        if (mounted) setState(() => _habitos = habitos);
+      },
+      onError: (e) => debugPrint('Error stream hábitos: $e'),
+      cancelOnError: false,
+    );
+  }
+
+  @override
+  void dispose() {
+    _habitSub?.cancel();
+    super.dispose();
   }
 
   Future<void> _cargarNombreUsuario() async {
-    // Verificar que el widget siga montado antes de cualquier operación
     if (!mounted) return;
-
     try {
       final user = FirebaseAuth.instance.currentUser;
-      if (user != null) {
-        final doc = await FirebaseFirestore.instance
-            .collection('usuaris')
-            .doc(user.uid)
-            .get();
-
-        if (mounted) { // Verificar nuevamente después del await
-          setState(() {
-            _userName = doc.data()?['nom'] ?? 'Usuario';
-            _isLoadingName = false;
-          });
-        }
-      } else {
-        if (mounted) {
-          setState(() {
-            _isLoadingName = false;
-          });
-        }
+      if (user == null) {
+        if (mounted) setState(() => _isLoadingName = false);
+        return;
       }
-    } catch (e) {
-      print('Error cargando nombre de usuario: $e');
+
+      final docRef = FirebaseFirestore.instance
+          .collection('usuaris')
+          .doc(user.uid);
+      var doc = await docRef.get();
+
+      // Si el documento no existe (usuario sin doc en Firestore), lo creamos
+      if (!doc.exists) {
+        final nomFallback = user.email?.split('@')[0] ?? 'Usuario';
+        await docRef.set({
+          'uid': user.uid,
+          'email': user.email ?? '',
+          'nom': nomFallback,
+          'data_registre': FieldValue.serverTimestamp(),
+          'totalHabitosCompletados': 0,
+        });
+        doc = await docRef.get();
+        // Crear hábitos por defecto si tampoco los tiene
+        await _habitService.crearHabitosDefecto();
+      }
+
       if (mounted) {
+        final nom = doc.data()?['nom'] as String?;
         setState(() {
+          _userName = (nom != null && nom.isNotEmpty)
+              ? nom
+              : user.email?.split('@')[0] ?? 'Usuario';
           _isLoadingName = false;
         });
-        // Opcional: mostrar un snackbar
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error al cargar el perfil')),
-        );
+      }
+    } catch (e) {
+      debugPrint('Error cargando nombre: $e');
+      final user = FirebaseAuth.instance.currentUser;
+      if (mounted) {
+        setState(() {
+          _userName = user?.email?.split('@')[0] ?? 'Usuario';
+          _isLoadingName = false;
+        });
       }
     }
   }
 
   Future<void> _cerrarSesion() async {
-    final ServeiAuth authService = ServeiAuth();
-    await authService.ferLogout();
-
-    // Solo navegar si el widget sigue montado
+    await ServeiAuth().ferLogout();
     if (!mounted) return;
-
-    // Usar una única navegación para evitar duplicados
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(builder: (context) => const LoginScreen()),
     );
-    // También podrías usar pushReplacementNamed si tienes rutas configuradas
-    // Navigator.pushReplacementNamed(context, '/login');
   }
+
+  void _confirmarEliminar(Habit habit) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF1E1E2E),
+        title: const Text('Eliminar hábito',
+            style: TextStyle(color: Colors.white)),
+        content: Text(
+          '¿Eliminar "${habit.nombre}"?',
+          style: const TextStyle(color: Colors.white70),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancelar', style: TextStyle(color: Colors.grey)),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _habitService.eliminarHabito(habit.id);
+            },
+            child: const Text('Eliminar',
+                style: TextStyle(color: Colors.redAccent)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  int get _mejorRacha => _habitos.isEmpty
+      ? 0
+      : _habitos.map((h) => h.rachaActual).reduce((a, b) => a > b ? a : b);
+
+  int get _completadosHoy => _habitos.where((h) => h.completadoHoy).length;
 
   @override
   Widget build(BuildContext context) {
@@ -153,7 +208,6 @@ class _HomeState extends State<Home> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        // Saludo y subtítulo
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
@@ -184,11 +238,10 @@ class _HomeState extends State<Home> {
                             ),
                           ],
                         ),
-                        // Botón de logout mejorado
                         GlassmorphismCard(
                           padding: EdgeInsets.zero,
                           child: InkWell(
-                            onTap: () => _mostrarDialogoCerrarSesion(),
+                            onTap: _mostrarDialogoCerrarSesion,
                             borderRadius: BorderRadius.circular(16),
                             child: Container(
                               width: 52,
@@ -201,11 +254,8 @@ class _HomeState extends State<Home> {
                                 ),
                                 borderRadius: BorderRadius.circular(16),
                               ),
-                              child: const Icon(
-                                Icons.logout,
-                                color: Colors.white,
-                                size: 28,
-                              ),
+                              child: const Icon(Icons.logout,
+                                  color: Colors.white, size: 28),
                             ),
                           ),
                         ),
@@ -213,49 +263,24 @@ class _HomeState extends State<Home> {
                     ),
                     const SizedBox(height: 20),
 
-                    // Tarjeta de resumen de XP
+                    // Tarjeta de resumen
                     GlassmorphismCard(
                       child: Padding(
                         padding: const EdgeInsets.symmetric(vertical: 16.0),
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceAround,
                           children: [
-                            _buildXpStat('Nivel', '12', '⭐'),
-                            _buildXpStat('XP Total', '2,450', '🔥'),
-                            _buildXpStat('Racha', '15', '📆'),
+                            _buildXpStat(
+                                'Hoy',
+                                '${_completadosHoy}/${_habitos.length}',
+                                '✅'),
+                            _buildXpStat(
+                                'Mejor racha', '$_mejorRacha días', '🔥'),
+                            _buildXpStat(
+                                'Hábitos', '${_habitos.length}', '📋'),
                           ],
                         ),
                       ),
-                    ),
-                  ],
-                ),
-              ),
-
-              const SizedBox(height: 16),
-
-              // Sección Tu progreso
-              GlassmorphismSection(
-                titulo: 'Tu progreso',
-                contenido: Column(
-                  children: [
-                    _buildProgressCard(
-                      icon: Icons.emoji_events_rounded,
-                      title: 'Rachas individuales',
-                      value: '15 días',
-                      progress: 0.5,
-                      color: const Color(0xFF22C55E),
-                      xp: '+230 XP',
-                      onTap: () {},
-                    ),
-                    const SizedBox(height: 12),
-                    _buildProgressCard(
-                      icon: Icons.people_rounded,
-                      title: 'Desafío grupal',
-                      value: '1/3 completados',
-                      progress: 0.33,
-                      color: const Color(0xFFF97316),
-                      xp: '+40 XP',
-                      onTap: () {},
                     ),
                   ],
                 ),
@@ -266,16 +291,17 @@ class _HomeState extends State<Home> {
               // Sección Hábitos de hoy
               GlassmorphismSection(
                 titulo: 'Hábitos de hoy',
-                onVerTodos: () {
-                  // Navegar a la pantalla de hábitos
-                },
-                contenido: Column(
-                  children: [
-                    _buildHabitItem('Meditar', '🌅', true, () {}),
-                    _buildHabitItem('Beber agua', '💧', false, () {}),
-                    _buildHabitItem('Leer 30 min', '📚', false, () {}),
-                  ],
-                ),
+                onVerTodos: () {},
+                contenido: _habitos.isEmpty
+                    ? _buildEmptyHabits()
+                    : Column(
+                        children: _habitos
+                            .map((habit) => Padding(
+                                  padding: const EdgeInsets.only(bottom: 8),
+                                  child: _buildHabitItem(habit),
+                                ))
+                            .toList(),
+                      ),
               ),
 
               const SizedBox(height: 24),
@@ -289,20 +315,12 @@ class _HomeState extends State<Home> {
                       children: [
                         Expanded(
                           child: _buildQuickAction(
-                            'Nuevo reto',
-                            '✨',
-                            const Color(0xFF22C55E),
-                            () {},
-                          ),
+                              'Nuevo reto', '✨', const Color(0xFF22C55E), () {}),
                         ),
                         const SizedBox(width: 12),
                         Expanded(
                           child: _buildQuickAction(
-                            'Ver stats',
-                            '📊',
-                            const Color(0xFF3B82F6),
-                            () {},
-                          ),
+                              'Ver stats', '📊', const Color(0xFF3B82F6), () {}),
                         ),
                       ],
                     ),
@@ -311,20 +329,12 @@ class _HomeState extends State<Home> {
                       children: [
                         Expanded(
                           child: _buildQuickAction(
-                            'Tienda XP',
-                            '🏆',
-                            const Color(0xFFF97316),
-                            () {},
-                          ),
+                              'Tienda XP', '🏆', const Color(0xFFF97316), () {}),
                         ),
                         const SizedBox(width: 12),
                         Expanded(
                           child: _buildQuickAction(
-                            'Amigos',
-                            '👥',
-                            const Color(0xFFA855F7),
-                            () {},
-                          ),
+                              'Amigos', '👥', const Color(0xFFA855F7), () {}),
                         ),
                       ],
                     ),
@@ -336,6 +346,27 @@ class _HomeState extends State<Home> {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildEmptyHabits() {
+    return GlassmorphismCard(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        children: [
+          const Text('🌱', style: TextStyle(fontSize: 32)),
+          const SizedBox(height: 8),
+          const Text(
+            'No tienes hábitos todavía',
+            style: TextStyle(color: Colors.white70, fontSize: 14),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Crea uno desde la pestaña +',
+            style: TextStyle(color: Colors.grey[600], fontSize: 12),
+          ),
+        ],
       ),
     );
   }
@@ -378,143 +409,75 @@ class _HomeState extends State<Home> {
         Text(
           value,
           style: const TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
-          ),
+              fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
         ),
-        Text(
-          label,
-          style: TextStyle(fontSize: 12, color: Colors.grey[400]),
-        ),
+        Text(label, style: TextStyle(fontSize: 12, color: Colors.grey[400])),
       ],
     );
   }
 
-  Widget _buildProgressCard({
-    required IconData icon,
-    required String title,
-    required String value,
-    required double progress,
-    required Color color,
-    required String xp,
-    required VoidCallback onTap,
-  }) {
-    return GlassmorphismCard(
-      onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
+  Widget _buildHabitItem(Habit habit) {
+    final completed = habit.completadoHoy;
+    return GestureDetector(
+      onLongPress: () => _confirmarEliminar(habit),
+      child: GlassmorphismCard(
+        onTap: () => _habitService.toggleCompletado(habit),
+        padding: const EdgeInsets.all(12),
+        child: Row(
           children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: color.withOpacity(0.15),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Icon(icon, color: color, size: 24),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        title,
-                        style: const TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.white,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        value,
-                        style: TextStyle(fontSize: 13, color: Colors.grey[400]),
-                      ),
-                    ],
-                  ),
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                  decoration: BoxDecoration(
-                    color: color.withOpacity(0.15),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Text(
-                    xp,
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: completed
+                    ? const Color(0xFF22C55E).withOpacity(0.14)
+                    : Colors.transparent,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Text(habit.emoji, style: const TextStyle(fontSize: 20)),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    habit.nombre,
                     style: TextStyle(
-                      color: color,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w500,
+                      color: completed ? Colors.grey[500] : Colors.white,
+                      decoration:
+                          completed ? TextDecoration.lineThrough : null,
                     ),
                   ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(8),
-              child: LinearProgressIndicator(
-                value: progress,
-                minHeight: 6,
-                backgroundColor: Colors.grey[800]!,
-                valueColor: AlwaysStoppedAnimation<Color>(color),
+                  if (habit.rachaActual > 0)
+                    Text(
+                      '🔥 ${habit.rachaActual} días de racha',
+                      style: TextStyle(fontSize: 11, color: Colors.orange[300]),
+                    ),
+                ],
               ),
             ),
+            if (completed)
+              const Icon(Icons.check_circle_rounded,
+                  color: Color(0xFF22C55E), size: 24)
+            else
+              Container(
+                width: 24,
+                height: 24,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.grey[700]!),
+                ),
+              ),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildHabitItem(String title, String emoji, bool completed, VoidCallback onTap) {
-    return GlassmorphismCard(
-      onTap: onTap,
-      padding: const EdgeInsets.all(12),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: completed
-                  ? const Color(0xFF22C55E).withOpacity(0.14)
-                  : Colors.transparent,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Text(emoji, style: const TextStyle(fontSize: 20)),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              title,
-              style: TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.w500,
-                color: completed ? Colors.grey[500] : Colors.white,
-                decoration: completed ? TextDecoration.lineThrough : null,
-              ),
-            ),
-          ),
-          if (completed)
-            const Icon(Icons.check_circle_rounded, color: Color(0xFF22C55E), size: 24)
-          else
-            Container(
-              width: 24,
-              height: 24,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(color: Colors.grey[700]!),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildQuickAction(String title, String emoji, Color color, VoidCallback onTap) {
+  Widget _buildQuickAction(
+      String title, String emoji, Color color, VoidCallback onTap) {
     return GlassmorphismCard(
       onTap: onTap,
       padding: const EdgeInsets.all(16),
@@ -532,10 +495,9 @@ class _HomeState extends State<Home> {
           Text(
             title,
             style: const TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w500,
-              color: Colors.white,
-            ),
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+                color: Colors.white),
             textAlign: TextAlign.center,
           ),
         ],
