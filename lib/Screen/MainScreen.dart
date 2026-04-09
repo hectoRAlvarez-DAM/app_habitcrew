@@ -1,7 +1,7 @@
 // main_screen.dart
 import 'package:flutter/material.dart';
 import 'package:app_habitcrew/Screen/home.dart';
-import 'package:app_habitcrew/Screen/quests.dart';
+import 'package:app_habitcrew/Screen/archievements_page.dart';
 import 'package:app_habitcrew/Screen/create.dart';
 import 'package:app_habitcrew/Screen/shop.dart';
 import 'package:app_habitcrew/Screen/profile.dart';
@@ -19,7 +19,7 @@ class _MainScreenState extends State<MainScreen> {
 
   final List<Widget> _pages = [
     const Home(),
-    const Quests(),
+    const AchievementsPage(),
     const Create(),
     const Shop(),
     const Profile(),
