@@ -32,14 +32,14 @@ class DuolingoTextField extends StatelessWidget {
   Widget build(BuildContext context) {
     final isMobile = ResponsiveUtils.isMobile(context);
     final isLandscape = ResponsiveUtils.isLandscape(context);
-    
+
     // Tamaños responsivos
     double fontSize;
     double labelFontSize;
     double iconSize;
     double borderRadius;
     EdgeInsets contentPadding;
-    
+
     if (isMobile) {
       fontSize = isLandscape ? 14.0 : 16.0;
       labelFontSize = isLandscape ? 12.0 : 14.0;
@@ -70,22 +70,23 @@ class DuolingoTextField extends StatelessWidget {
         Text(
           labelText,
           style: TextStyle(
-            color: AppColors.textSecondary,
+            color: Colors.white,
             fontSize: labelFontSize,
             fontWeight: FontWeight.w600,
           ),
         ),
-        
+
         const SizedBox(height: 6.0),
-        
+
         // Campo de texto con colores visibles
         Container(
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(borderRadius),
-            color: AppColors.backgroundGrey,
+            color: Colors.white.withOpacity(0.1),
+            border: Border.all(color: Colors.white.withOpacity(0.2), width: 1),
             boxShadow: [
               BoxShadow(
-                color: AppColors.shadow,
+                color: Colors.black.withOpacity(0.3),
                 blurRadius: 4.0,
                 offset: const Offset(0, 2),
               ),
@@ -99,16 +100,13 @@ class DuolingoTextField extends StatelessWidget {
             onChanged: onChanged,
             enabled: enabled,
             style: TextStyle(
-              color: enabled ? AppColors.textPrimary : AppColors.textLight,
+              color: Colors.white,
               fontSize: fontSize,
               fontWeight: FontWeight.w500,
             ),
             decoration: InputDecoration(
               hintText: hintText,
-              hintStyle: TextStyle(
-                color: AppColors.textLight,
-                fontSize: fontSize,
-              ),
+              hintStyle: TextStyle(color: Colors.white54, fontSize: fontSize),
               filled: true,
               fillColor: Colors.transparent,
               prefixIcon: prefixIcon != null
@@ -119,7 +117,9 @@ class DuolingoTextField extends StatelessWidget {
                       ),
                       child: Icon(
                         prefixIcon,
-                        color: enabled ? AppColors.primary : AppColors.textLight,
+                        color: enabled
+                            ? const Color(0xFF58CC02)
+                            : Colors.white38,
                         size: iconSize,
                       ),
                     )
@@ -135,17 +135,11 @@ class DuolingoTextField extends StatelessWidget {
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(borderRadius),
-                borderSide: BorderSide(
-                  color: AppColors.primary,
-                  width: 2.0,
-                ),
+                borderSide: BorderSide(color: AppColors.primary, width: 2.0),
               ),
               errorBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(borderRadius),
-                borderSide: BorderSide(
-                  color: AppColors.error,
-                  width: 1.5,
-                ),
+                borderSide: BorderSide(color: AppColors.error, width: 1.5),
               ),
               contentPadding: contentPadding,
             ),
