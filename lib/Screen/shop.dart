@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:app_habitcrew/Widgets/animated_background.dart';
 import 'package:app_habitcrew/Widgets/glassmorphism_card.dart';
+import 'package:app_habitcrew/servicios/coin_service.dart';
 
 class Shop extends StatefulWidget {
   const Shop({super.key});
@@ -12,7 +13,8 @@ class Shop extends StatefulWidget {
 class _ShopState extends State<Shop> with SingleTickerProviderStateMixin {
   late TabController _tabController;
 
-  int userCoins = 500;
+  // Saldo del usuario compartido via CoinService
+  int get userCoins => CoinService.instance.coins;
 
   final List<StoreItem> banners = [
     StoreItem(id: 'b1', name: 'Atardecer', price: 100, icon: Icons.landscape, color: Colors.orange),
@@ -41,10 +43,14 @@ class _ShopState extends State<Shop> with SingleTickerProviderStateMixin {
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
+    CoinService.instance.coinsNotifier.addListener(_onCoinsChanged);
   }
+
+  void _onCoinsChanged() => setState(() {});
 
   @override
   void dispose() {
+    CoinService.instance.coinsNotifier.removeListener(_onCoinsChanged);
     _tabController.dispose();
     super.dispose();
   }
@@ -76,7 +82,7 @@ class _ShopState extends State<Shop> with SingleTickerProviderStateMixin {
             onPressed: () {
               Navigator.pop(ctx);
               setState(() {
-                userCoins -= item.price;
+                CoinService.instance.spend(item.price);
                 purchasedIds.add(item.id);
               });
               _showMessage('¡Compra realizada!');

@@ -289,6 +289,37 @@ class _AchievementOverlayContentState
                             color: Colors.white60,
                           ),
                         ),
+                        const SizedBox(height: 16),
+
+                        // ─── Recompensa en monedas ───────────────
+                        if (widget.achievement.coinReward > 0)
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 20, vertical: 10),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFFFD700).withOpacity(0.12),
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(
+                                color: const Color(0xFFFFD700).withOpacity(0.4),
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(Icons.monetization_on,
+                                    color: Color(0xFFFFD700), size: 20),
+                                const SizedBox(width: 8),
+                                Text(
+                                  '+${widget.achievement.coinReward} monedas',
+                                  style: const TextStyle(
+                                    color: Color(0xFFFFD700),
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
                         const SizedBox(height: 24),
 
                         // ─── Botón cerrar ───────────────────────

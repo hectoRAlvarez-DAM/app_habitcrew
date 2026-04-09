@@ -1,6 +1,7 @@
 import 'package:app_habitcrew/Screen/models/archievement.dart';
 import 'package:app_habitcrew/Screen/models/archievement_category.dart';
 import 'package:app_habitcrew/Widgets/achivement_unlock_overlay.dart';
+import 'package:app_habitcrew/servicios/coin_service.dart';
 import 'package:flutter/material.dart';
 import '../repositories/achievement_repository.dart';
 import '../widgets/animated_background.dart';
@@ -18,11 +19,23 @@ class _AchievementsPageState extends State<AchievementsPage> {
   bool _isLoading = true;
   String? _expandedCategoryId;
 
+  // IDs de logros cuyas monedas ya han sido reclamadas
+  final Set<String> _claimedIds = {};
+
   @override
   void initState() {
     super.initState();
     _loadData();
+    CoinService.instance.coinsNotifier.addListener(_onCoinsChanged);
   }
+
+  @override
+  void dispose() {
+    CoinService.instance.coinsNotifier.removeListener(_onCoinsChanged);
+    super.dispose();
+  }
+
+  void _onCoinsChanged() => setState(() {});
 
   Future<void> _loadData() async {
     setState(() => _isLoading = true);
@@ -33,6 +46,58 @@ class _AchievementsPageState extends State<AchievementsPage> {
     });
   }
 
+  // ─── ESTADÍSTICAS CALCULADAS ─────────────────────────────────────
+
+  int get _totalAchievements =>
+      _categories.fold(0, (s, c) => s + c.totalAchievements);
+
+  int get _unlockedAchievements =>
+      _categories.fold(0, (s, c) => s + c.unlockedAchievements);
+
+  int get _totalCoinsEarned => _categories
+      .expand((c) => c.achievements)
+      .where((a) => a.isUnlocked)
+      .fold(0, (s, a) => s + a.coinReward);
+
+  int get _coinsToClaim => _categories
+      .expand((c) => c.achievements)
+      .where((a) => a.isUnlocked && !_claimedIds.contains(a.id))
+      .fold(0, (s, a) => s + a.coinReward);
+
+  AchievementCategory? get _bestCategory {
+    if (_categories.isEmpty) return null;
+    return _categories.reduce((a, b) =>
+        a.completionPercentage >= b.completionPercentage ? a : b);
+  }
+
+  int get _longestStreak {
+    final constancia = _categories.where((c) => c.id == '1').firstOrNull;
+    if (constancia == null) return 0;
+    return constancia.achievements
+        .where((a) => a.isUnlocked)
+        .fold(0, (s, a) => a.currentValue > s ? a.currentValue : s);
+  }
+
+  void _claimCoins(Achievement achievement) {
+    if (_claimedIds.contains(achievement.id)) return;
+    CoinService.instance.add(achievement.coinReward);
+    setState(() => _claimedIds.add(achievement.id));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.monetization_on, color: Color(0xFFFFD700)),
+            const SizedBox(width: 8),
+            Text('+${achievement.coinReward} monedas reclamadas'),
+          ],
+        ),
+        backgroundColor: const Color(0xFF22C55E),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return AnimatedBackground(
@@ -41,28 +106,44 @@ class _AchievementsPageState extends State<AchievementsPage> {
         appBar: AppBar(
           title: const Text(
             'Mis Logros',
-            style: TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.bold,
-            ),
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
           ),
           centerTitle: true,
           backgroundColor: Colors.transparent,
           elevation: 0,
           foregroundColor: Colors.white,
+          actions: [
+            Padding(
+              padding: const EdgeInsets.only(right: 16),
+              child: Row(
+                children: [
+                  const Icon(Icons.monetization_on,
+                      color: Color(0xFFFFD700), size: 20),
+                  const SizedBox(width: 4),
+                  Text(
+                    '${CoinService.instance.coins}',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
         body: _isLoading
             ? const Center(
-                child: CircularProgressIndicator(
-                  color: Color(0xFF22C55E),
-                ),
-              )
+                child: CircularProgressIndicator(color: Color(0xFF22C55E)))
             : RefreshIndicator(
                 onRefresh: _loadData,
                 color: const Color(0xFF22C55E),
                 child: ListView(
                   padding: const EdgeInsets.all(16),
                   children: [
+                    _buildStatsSection(),
+                    const SizedBox(height: 16),
                     _buildSummaryCard(),
                     const SizedBox(height: 16),
                     ..._categories.map(_buildCategoryCard),
@@ -73,14 +154,138 @@ class _AchievementsPageState extends State<AchievementsPage> {
     );
   }
 
-  // ─── RESUMEN SUPERIOR ───────────────────────────────────────────
+  // ─── SECCIÓN DE ESTADÍSTICAS ─────────────────────────────────────
+  Widget _buildStatsSection() {
+    final best = _bestCategory;
+    final pct = _totalAchievements > 0
+        ? ((_unlockedAchievements / _totalAchievements) * 100).round()
+        : 0;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Padding(
+          padding: EdgeInsets.only(left: 4, bottom: 12),
+          child: Text(
+            'Estadísticas',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            ),
+          ),
+        ),
+        // Fila de stats rápidas
+        Row(
+          children: [
+            Expanded(
+              child: _buildStatCard(
+                icon: Icons.emoji_events,
+                iconColor: Colors.amber,
+                value: '$_unlockedAchievements/$_totalAchievements',
+                label: 'Logros',
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: _buildStatCard(
+                icon: Icons.local_fire_department,
+                iconColor: Colors.orangeAccent,
+                value: '$_longestStreak días',
+                label: 'Mejor racha',
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: _buildStatCard(
+                icon: Icons.pie_chart,
+                iconColor: Colors.lightGreen,
+                value: '$pct%',
+                label: 'Completado',
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        // Fila de monedas
+        Row(
+          children: [
+            Expanded(
+              child: _buildStatCard(
+                icon: Icons.monetization_on,
+                iconColor: const Color(0xFFFFD700),
+                value: '$_totalCoinsEarned 🪙',
+                label: 'Ganadas en logros',
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: _buildStatCard(
+                icon: Icons.redeem,
+                iconColor: Colors.greenAccent,
+                value: '$_coinsToClaim 🪙',
+                label: 'Por reclamar',
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: _buildStatCard(
+                icon: Icons.star,
+                iconColor: Colors.purpleAccent,
+                value: best?.name ?? '—',
+                label: 'Mejor categoría',
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildStatCard({
+    required IconData icon,
+    required Color iconColor,
+    required String value,
+    required String label,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.07),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.white.withOpacity(0.08)),
+      ),
+      child: Column(
+        children: [
+          Icon(icon, color: iconColor, size: 22),
+          const SizedBox(height: 6),
+          Text(
+            value,
+            style: const TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            ),
+            textAlign: TextAlign.center,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+          const SizedBox(height: 2),
+          Text(
+            label,
+            style: const TextStyle(fontSize: 10, color: Colors.white54),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ─── RESUMEN SUPERIOR ────────────────────────────────────────────
   Widget _buildSummaryCard() {
-    final total =
-        _categories.fold<int>(0, (s, c) => s + c.totalAchievements);
-    final unlocked =
-        _categories.fold<int>(0, (s, c) => s + c.unlockedAchievements);
-    final percent =
-        total > 0 ? ((unlocked / total) * 100).round() : 0;
+    final total = _totalAchievements;
+    final unlocked = _unlockedAchievements;
+    final percent = total > 0 ? ((unlocked / total) * 100).round() : 0;
 
     return Card(
       elevation: 3,
@@ -119,40 +324,6 @@ class _AchievementsPageState extends State<AchievementsPage> {
                 ),
               ),
             ),
-
-            // ─── BOTÓN DE PRUEBA ──────────────────────────────────
-            const SizedBox(height: 16),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed: () {
-                  final dummyAchievement = Achievement(
-                    id: 'test',
-                    title: 'Racha de 7 días',
-                    description:
-                        'Mantuviste un hábito durante 7 días seguidos',
-                    icon: Icons.local_fire_department,
-                    isUnlocked: true,
-                    unlockedDate: DateTime.now(),
-                    currentValue: 7,
-                    targetValue: 7,
-                    categoryId: '1',
-                  );
-                  AchievementUnlockOverlay.show(context, dummyAchievement);
-                },
-                icon: const Icon(Icons.emoji_events),
-                label: const Text('🧪 Simular logro'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF22C55E),
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-              ),
-            ),
-            // ──────────────────────────────────────────────────────
           ],
         ),
       ),
@@ -165,16 +336,11 @@ class _AchievementsPageState extends State<AchievementsPage> {
         Text(
           value,
           style: TextStyle(
-            fontSize: 26,
-            fontWeight: FontWeight.bold,
-            color: color,
-          ),
+              fontSize: 26, fontWeight: FontWeight.bold, color: color),
         ),
         const SizedBox(height: 4),
-        Text(
-          label,
-          style: const TextStyle(fontSize: 12, color: Colors.white60),
-        ),
+        Text(label,
+            style: const TextStyle(fontSize: 12, color: Colors.white60)),
       ],
     );
   }
@@ -201,7 +367,8 @@ class _AchievementsPageState extends State<AchievementsPage> {
                   CircleAvatar(
                     backgroundColor:
                         const Color(0xFF22C55E).withOpacity(0.15),
-                    child: Icon(category.icon, color: const Color(0xFF22C55E)),
+                    child:
+                        Icon(category.icon, color: const Color(0xFF22C55E)),
                   ),
                   const SizedBox(width: 14),
                   Expanded(
@@ -220,9 +387,7 @@ class _AchievementsPageState extends State<AchievementsPage> {
                         Text(
                           '${category.unlockedAchievements}/${category.totalAchievements} desbloqueados',
                           style: const TextStyle(
-                            fontSize: 12,
-                            color: Colors.white60,
-                          ),
+                              fontSize: 12, color: Colors.white60),
                         ),
                         const SizedBox(height: 8),
                         LinearProgressIndicator(
@@ -255,54 +420,149 @@ class _AchievementsPageState extends State<AchievementsPage> {
 
   // ─── LOGRO INDIVIDUAL ────────────────────────────────────────────
   Widget _buildAchievementTile(Achievement achievement) {
-    final color =
-        achievement.isUnlocked ? Colors.amber : Colors.white38;
+    final color = achievement.isUnlocked ? Colors.amber : Colors.white38;
+    final isClaimed = _claimedIds.contains(achievement.id);
 
-    return ListTile(
-      leading: CircleAvatar(
-        backgroundColor: color.withOpacity(0.15),
-        child: Icon(achievement.icon, color: color, size: 20),
-      ),
-      title: Text(
-        achievement.title,
-        style: TextStyle(
-          fontWeight: FontWeight.w600,
-          color: achievement.isUnlocked ? Colors.white : Colors.white38,
+    return InkWell(
+      onTap: achievement.isUnlocked
+          ? () => AchievementUnlockOverlay.show(context, achievement)
+          : null,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Ícono
+            CircleAvatar(
+              backgroundColor: color.withOpacity(0.15),
+              child: Icon(achievement.icon, color: color, size: 20),
+            ),
+            const SizedBox(width: 12),
+            // Contenido
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Título + badge de monedas
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          achievement.title,
+                          style: TextStyle(
+                            fontWeight: FontWeight.w600,
+                            color: achievement.isUnlocked
+                                ? Colors.white
+                                : Colors.white38,
+                          ),
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFFD700).withOpacity(0.12),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                            color: const Color(0xFFFFD700).withOpacity(0.3),
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.monetization_on,
+                                color: Color(0xFFFFD700), size: 12),
+                            const SizedBox(width: 3),
+                            Text(
+                              '${achievement.coinReward}',
+                              style: const TextStyle(
+                                color: Color(0xFFFFD700),
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  // Descripción
+                  Text(
+                    achievement.description,
+                    style:
+                        const TextStyle(fontSize: 12, color: Colors.white54),
+                  ),
+                  const SizedBox(height: 8),
+                  // Estado / progreso / reclamar
+                  if (!achievement.isUnlocked) ...[
+                    Text(
+                      '${achievement.currentValue} / ${achievement.targetValue}',
+                      style: const TextStyle(
+                          fontSize: 11, color: Colors.white38),
+                    ),
+                    const SizedBox(height: 4),
+                    LinearProgressIndicator(
+                      value: achievement.progress,
+                      backgroundColor: Colors.white12,
+                      valueColor: const AlwaysStoppedAnimation<Color>(
+                          Color(0xFF22C55E)),
+                    ),
+                  ] else if (isClaimed) ...[
+                    Text(
+                      '✅ Desbloqueado el ${_formatDate(achievement.unlockedDate!)}',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: Colors.green[300],
+                        fontStyle: FontStyle.italic,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    const Text(
+                      '🪙 Monedas ya reclamadas · Toca para celebrar 🎉',
+                      style: TextStyle(fontSize: 10, color: Colors.white24),
+                    ),
+                  ] else ...[
+                    Text(
+                      '✅ Desbloqueado el ${_formatDate(achievement.unlockedDate!)}',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: Colors.green[300],
+                        fontStyle: FontStyle.italic,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        onPressed: () => _claimCoins(achievement),
+                        icon: const Icon(Icons.monetization_on,
+                            size: 16, color: Color(0xFFFFD700)),
+                        label: Text(
+                          'Reclamar ${achievement.coinReward} monedas',
+                          style: const TextStyle(fontSize: 13),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor:
+                              const Color(0xFF22C55E).withOpacity(0.2),
+                          foregroundColor: Colors.white,
+                          side: BorderSide(
+                            color: const Color(0xFF22C55E).withOpacity(0.5),
+                          ),
+                          padding: const EdgeInsets.symmetric(vertical: 8),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ],
         ),
       ),
-      subtitle: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            achievement.description,
-            style: const TextStyle(fontSize: 12, color: Colors.white54),
-          ),
-          const SizedBox(height: 6),
-          if (!achievement.isUnlocked) ...[
-            Text(
-              '${achievement.currentValue} / ${achievement.targetValue}',
-              style: const TextStyle(fontSize: 11, color: Colors.white38),
-            ),
-            const SizedBox(height: 4),
-            LinearProgressIndicator(
-              value: achievement.progress,
-              backgroundColor: Colors.white12,
-              valueColor: const AlwaysStoppedAnimation<Color>(
-                Color(0xFF22C55E),
-              ),
-            ),
-          ] else
-            Text(
-              '✅ Desbloqueado el ${_formatDate(achievement.unlockedDate!)}',
-              style: TextStyle(
-                fontSize: 11,
-                color: Colors.green[300],
-                fontStyle: FontStyle.italic,
-              ),
-            ),
-        ],
-      ),
-      isThreeLine: true,
     );
   }
 
