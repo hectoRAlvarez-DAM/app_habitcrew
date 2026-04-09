@@ -25,7 +25,6 @@ class GroupService {
     final uid = _uid;
     if (uid == null) throw Exception('Usuario no autenticado');
 
-    // Obtener nombre del usuario
     final userDoc = await _firestore.collection('usuaris').doc(uid).get();
     final userName = userDoc.data()?['nom'] ?? 'Usuario';
 
@@ -51,8 +50,8 @@ class GroupService {
     return {'grupoId': grupoRef.id, 'codigo': codigo};
   }
 
-  /// Une al usuario a un grupo existente dado su código
-  /// Devuelve el grupoId si tiene éxito, o null si el código no existe
+  /// Une al usuario a un grupo existente dado su código.
+  /// Devuelve los datos del grupo si tiene éxito, o null si el código no existe.
   Future<Map<String, String>?> unirseAGrupo(String codigo) async {
     final uid = _uid;
     if (uid == null) return null;
@@ -69,7 +68,6 @@ class GroupService {
     final grupoId = grupoDoc.id;
     final data = grupoDoc.data();
 
-    // Comprobar si ya es miembro
     final miembros = List<Map<String, dynamic>>.from(data['miembros'] ?? []);
     final yaEsMiembro = miembros.any((m) => m['uid'] == uid);
 
@@ -98,6 +96,18 @@ class GroupService {
     };
   }
 
+  /// Obtiene el código de un grupo por su ID.
+  /// Devuelve null si no existe o hay error.
+  Future<String?> obtenerCodigoGrupo(String grupoId) async {
+    try {
+      final doc = await _firestore.collection('grupos').doc(grupoId).get();
+      if (!doc.exists) return null;
+      return doc.data()?['codigo'] as String?;
+    } catch (_) {
+      return null;
+    }
+  }
+
   /// Obtiene los datos de un grupo por ID
   Future<DocumentSnapshot?> obtenerGrupo(String grupoId) async {
     try {
@@ -107,57 +117,74 @@ class GroupService {
     }
   }
 
-  /// Stream de los completados de todos los miembros del grupo en los últimos 7 días
+  /// Obtiene las estadísticas de todos los miembros del grupo en paralelo.
+  /// Si un miembro falla, se omite sin romper el resto.
   /// Devuelve: { uid: { 'nombre': String, 'dias': List<bool> (7 días) } }
   Future<Map<String, dynamic>> obtenerEstadisticasGrupo(String grupoId) async {
-    final grupoDoc = await _firestore.collection('grupos').doc(grupoId).get();
-    if (!grupoDoc.exists) return {};
+    try {
+      final grupoDoc =
+          await _firestore.collection('grupos').doc(grupoId).get();
+      if (!grupoDoc.exists) return {};
 
-    final data = grupoDoc.data() as Map<String, dynamic>;
-    final miembros = List<Map<String, dynamic>>.from(data['miembros'] ?? []);
-    final frecuencia = data['frecuencia'] ?? 'Diario';
+      final data = grupoDoc.data() as Map<String, dynamic>;
+      final miembros =
+          List<Map<String, dynamic>>.from(data['miembros'] ?? []);
+      final ahora = DateTime.now();
 
-    final resultado = <String, dynamic>{};
-    final ahora = DateTime.now();
+      // Lanzar todas las queries en paralelo con Future.wait
+      final futures = miembros.map((miembro) async {
+        final mUid = miembro['uid'] as String;
+        final mNombre = miembro['nombre'] as String? ?? 'Usuario';
 
-    for (final miembro in miembros) {
-      final mUid = miembro['uid'] as String;
-      final mNombre = miembro['nombre'] as String? ?? 'Usuario';
+        try {
+          final habitosSnap = await _firestore
+              .collection('usuaris')
+              .doc(mUid)
+              .collection('habitos')
+              .where('grupoId', isEqualTo: grupoId)
+              .limit(1)
+              .get();
 
-      // Buscar el hábito de este usuario en este grupo
-      final habitosSnap = await _firestore
-          .collection('usuaris')
-          .doc(mUid)
-          .collection('habitos')
-          .where('grupoId', isEqualTo: grupoId)
-          .limit(1)
-          .get();
+          List<bool> diasCompletados = List.filled(7, false);
 
-      List<bool> diasCompletados = List.filled(7, false);
+          if (habitosSnap.docs.isNotEmpty) {
+            final habitoData = habitosSnap.docs.first.data();
+            final historial = List<Map<String, dynamic>>.from(
+                habitoData['historial'] ?? []);
 
-      if (habitosSnap.docs.isNotEmpty) {
-        final habitoData = habitosSnap.docs.first.data();
-        final historial = List<Map<String, dynamic>>.from(
-            habitoData['historial'] ?? []);
+            for (int i = 0; i < 7; i++) {
+              final dia = DateTime(ahora.year, ahora.month, ahora.day)
+                  .subtract(Duration(days: 6 - i));
+              diasCompletados[i] = _estaCompletadoEnDia(historial, dia);
+            }
+          }
 
-        for (int i = 0; i < 7; i++) {
-          final dia = DateTime(ahora.year, ahora.month, ahora.day)
-              .subtract(Duration(days: 6 - i));
-          diasCompletados[i] = _estaCompletadoEnDia(historial, dia, frecuencia);
+          return MapEntry(mUid, {
+            'nombre': mNombre,
+            'dias': diasCompletados,
+          });
+        } catch (e) {
+          // Si este miembro falla, devolvemos días vacíos en vez de romper todo
+          print('⚠️ Error cargando stats del miembro $mUid: $e');
+          return MapEntry(mUid, {
+            'nombre': mNombre,
+            'dias': List.filled(7, false),
+          });
         }
-      }
+      }).toList();
 
-      resultado[mUid] = {
-        'nombre': mNombre,
-        'dias': diasCompletados,
-      };
+      // Esperar todos en paralelo
+      final resultados = await Future.wait(futures);
+
+      return Map.fromEntries(resultados);
+    } catch (e) {
+      print('❌ Error cargando estadísticas del grupo: $e');
+      return {};
     }
-
-    return resultado;
   }
 
   bool _estaCompletadoEnDia(
-      List<Map<String, dynamic>> historial, DateTime dia, String frecuencia) {
+      List<Map<String, dynamic>> historial, DateTime dia) {
     for (final entry in historial) {
       final fecha = (entry['fecha'] as Timestamp?)?.toDate();
       if (fecha == null) continue;

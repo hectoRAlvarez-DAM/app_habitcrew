@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:app_habitcrew/Widgets/animated_background.dart';
 import 'package:app_habitcrew/Widgets/glassmorphism_card.dart';
 import 'package:app_habitcrew/Screen/models/habit.dart';
@@ -22,6 +23,9 @@ class _HabitDetailScreenState extends State<HabitDetailScreen> {
   Map<String, dynamic> _estadisticasGrupo = {};
   bool _loadingPersonal = true;
   bool _loadingGrupo = true;
+
+  // Código del grupo
+  String? _codigoGrupo;
 
   // Controladores de edición
   late TextEditingController _nombreController;
@@ -55,23 +59,34 @@ class _HabitDetailScreenState extends State<HabitDetailScreen> {
   }
 
   Future<void> _cargarDatos() async {
-    final personal =
-        await _habitService.obtenerHistorial7Dias(widget.habit.id);
-    setState(() {
-      _historialPersonal = personal;
-      _loadingPersonal = false;
-    });
+    // Cargar historial personal y código de grupo en paralelo
+    final futures = <Future>[
+      _habitService.obtenerHistorial7Dias(widget.habit.id),
+    ];
 
     if (widget.habit.esGrupal && widget.habit.grupoId != null) {
-      final grupoStats =
-          await _groupService.obtenerEstadisticasGrupo(widget.habit.grupoId!);
-      setState(() {
-        _estadisticasGrupo = grupoStats;
-        _loadingGrupo = false;
-      });
-    } else {
-      setState(() => _loadingGrupo = false);
+      futures.add(
+          _groupService.obtenerCodigoGrupo(widget.habit.grupoId!));
+      futures.add(
+          _groupService.obtenerEstadisticasGrupo(widget.habit.grupoId!));
     }
+
+    final resultados = await Future.wait(futures);
+
+    if (!mounted) return;
+
+    setState(() {
+      _historialPersonal = resultados[0] as List<bool>;
+      _loadingPersonal = false;
+
+      if (widget.habit.esGrupal && widget.habit.grupoId != null) {
+        _codigoGrupo = resultados[1] as String?;
+        _estadisticasGrupo = resultados[2] as Map<String, dynamic>;
+        _loadingGrupo = false;
+      } else {
+        _loadingGrupo = false;
+      }
+    });
   }
 
   Future<void> _guardarCambios() async {
@@ -112,7 +127,8 @@ class _HabitDetailScreenState extends State<HabitDetailScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancelar', style: TextStyle(color: Colors.grey)),
+            child:
+                const Text('Cancelar', style: TextStyle(color: Colors.grey)),
           ),
           TextButton(
             onPressed: () async {
@@ -139,7 +155,7 @@ class _HabitDetailScreenState extends State<HabitDetailScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Header
+                // ── Header ────────────────────────────────────────
                 Row(
                   children: [
                     GestureDetector(
@@ -157,10 +173,8 @@ class _HabitDetailScreenState extends State<HabitDetailScreen> {
                       ),
                     ),
                     const SizedBox(width: 16),
-                    Text(
-                      widget.habit.emoji,
-                      style: const TextStyle(fontSize: 28),
-                    ),
+                    Text(widget.habit.emoji,
+                        style: const TextStyle(fontSize: 28)),
                     const SizedBox(width: 10),
                     Expanded(
                       child: Text(
@@ -181,7 +195,8 @@ class _HabitDetailScreenState extends State<HabitDetailScreen> {
                           color: const Color(0xFF3B82F6).withValues(alpha: 0.2),
                           borderRadius: BorderRadius.circular(20),
                           border: Border.all(
-                              color: const Color(0xFF3B82F6).withValues(alpha: 0.4)),
+                              color: const Color(0xFF3B82F6)
+                                  .withValues(alpha: 0.4)),
                         ),
                         child: const Row(
                           mainAxisSize: MainAxisSize.min,
@@ -200,7 +215,7 @@ class _HabitDetailScreenState extends State<HabitDetailScreen> {
 
                 const SizedBox(height: 24),
 
-                // Stats rápidas
+                // ── Stats rápidas ─────────────────────────────────
                 GlassmorphismCard(
                   child: Padding(
                     padding: const EdgeInsets.symmetric(vertical: 16),
@@ -208,17 +223,92 @@ class _HabitDetailScreenState extends State<HabitDetailScreen> {
                       mainAxisAlignment: MainAxisAlignment.spaceAround,
                       children: [
                         _buildStat('Racha', '${widget.habit.rachaActual}🔥'),
-                        _buildStat('Récord', '${widget.habit.recordRacha} días'),
-                        _buildStat('Total', '${widget.habit.totalCompletados}✅'),
+                        _buildStat(
+                            'Récord', '${widget.habit.recordRacha} días'),
+                        _buildStat(
+                            'Total', '${widget.habit.totalCompletados}✅'),
                         _buildStat('Freq.', widget.habit.frecuencia),
                       ],
                     ),
                   ),
                 ),
 
+                // ── Código del grupo ──────────────────────────────
+                if (widget.habit.esGrupal) ...[
+                  const SizedBox(height: 20),
+                  _buildSectionTitle('🔑 Código del grupo'),
+                  const SizedBox(height: 12),
+                  GlassmorphismCard(
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: _codigoGrupo == null
+                          ? const Center(
+                              child: SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                    color: Color(0xFF22C55E), strokeWidth: 2),
+                              ),
+                            )
+                          : Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Text(
+                                      'Comparte este código con tus compañeros',
+                                      style: TextStyle(
+                                          color: Colors.white54, fontSize: 12),
+                                    ),
+                                    const SizedBox(height: 8),
+                                    Text(
+                                      _codigoGrupo!,
+                                      style: const TextStyle(
+                                        color: Color(0xFF22C55E),
+                                        fontSize: 28,
+                                        fontWeight: FontWeight.bold,
+                                        letterSpacing: 6,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                GestureDetector(
+                                  onTap: () {
+                                    Clipboard.setData(
+                                        ClipboardData(text: _codigoGrupo!));
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content:
+                                            Text('📋 Código copiado'),
+                                        backgroundColor: Color(0xFF22C55E),
+                                        duration: Duration(seconds: 2),
+                                      ),
+                                    );
+                                  },
+                                  child: Container(
+                                    padding: const EdgeInsets.all(10),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFF22C55E)
+                                          .withValues(alpha: 0.15),
+                                      borderRadius: BorderRadius.circular(10),
+                                      border: Border.all(
+                                          color: const Color(0xFF22C55E)
+                                              .withValues(alpha: 0.3)),
+                                    ),
+                                    child: const Icon(Icons.copy,
+                                        color: Color(0xFF22C55E), size: 20),
+                                  ),
+                                ),
+                              ],
+                            ),
+                    ),
+                  ),
+                ],
+
                 const SizedBox(height: 20),
 
-                // Gráfica personal últimos 7 días
+                // ── Gráfica personal últimos 7 días ───────────────
                 _buildSectionTitle('📊 Mis últimos 7 días'),
                 const SizedBox(height: 12),
                 GlassmorphismCard(
@@ -237,7 +327,7 @@ class _HabitDetailScreenState extends State<HabitDetailScreen> {
                   ),
                 ),
 
-                // Gráfica grupal (solo si es grupal)
+                // ── Gráfica grupal ────────────────────────────────
                 if (widget.habit.esGrupal) ...[
                   const SizedBox(height: 20),
                   _buildSectionTitle('👥 Progreso del grupo'),
@@ -262,7 +352,7 @@ class _HabitDetailScreenState extends State<HabitDetailScreen> {
 
                 const SizedBox(height: 24),
 
-                // Sección editar
+                // ── Editar hábito ─────────────────────────────────
                 _buildSectionTitle('✏️ Editar hábito'),
                 const SizedBox(height: 12),
 
@@ -304,7 +394,8 @@ class _HabitDetailScreenState extends State<HabitDetailScreen> {
                                 ),
                                 child: Center(
                                     child: Text(e,
-                                        style: const TextStyle(fontSize: 18))),
+                                        style:
+                                            const TextStyle(fontSize: 18))),
                               ),
                             );
                           }).toList(),
@@ -319,7 +410,8 @@ class _HabitDetailScreenState extends State<HabitDetailScreen> {
                                 fontSize: 13,
                                 fontWeight: FontWeight.w600)),
                         const SizedBox(height: 6),
-                        _buildTextField(_nombreController, 'Nombre del hábito'),
+                        _buildTextField(
+                            _nombreController, 'Nombre del hábito'),
 
                         const SizedBox(height: 16),
 
@@ -361,7 +453,8 @@ class _HabitDetailScreenState extends State<HabitDetailScreen> {
                                     border: Border.all(
                                       color: sel
                                           ? const Color(0xFF22C55E)
-                                          : Colors.white.withValues(alpha: 0.1),
+                                          : Colors.white
+                                              .withValues(alpha: 0.1),
                                     ),
                                   ),
                                   child: Text(f,
@@ -437,7 +530,7 @@ class _HabitDetailScreenState extends State<HabitDetailScreen> {
     );
   }
 
-  // ─── Helpers de UI ──────────────────────────────────────────────
+  // ─── Helpers ────────────────────────────────────────────────────
 
   Widget _buildSectionTitle(String title) {
     return Text(
@@ -456,8 +549,7 @@ class _HabitDetailScreenState extends State<HabitDetailScreen> {
                 fontWeight: FontWeight.bold,
                 color: Colors.white)),
         const SizedBox(height: 2),
-        Text(label,
-            style: TextStyle(fontSize: 11, color: Colors.grey[400])),
+        Text(label, style: TextStyle(fontSize: 11, color: Colors.grey[400])),
       ],
     );
   }
@@ -494,8 +586,6 @@ class _HabitDetailScreenState extends State<HabitDetailScreen> {
     });
   }
 
-  // ─── Gráfica de barras personal ─────────────────────────────────
-
   Widget _buildBarChart({
     required List<List<bool>> data,
     required List<String> labels,
@@ -526,9 +616,12 @@ class _HabitDetailScreenState extends State<HabitDetailScreen> {
                         padding: EdgeInsets.only(
                             right: memberIndex < memberCount - 1 ? 2 : 0),
                         child: AnimatedContainer(
-                          duration: Duration(milliseconds: 300 + dayIndex * 50),
+                          duration:
+                              Duration(milliseconds: 300 + dayIndex * 50),
                           curve: Curves.easeOut,
-                          width: memberCount == 1 ? barWidth : barWidth / memberCount + 2,
+                          width: memberCount == 1
+                              ? barWidth
+                              : barWidth / memberCount + 2,
                           height: completado ? barMaxHeight : 8,
                           decoration: BoxDecoration(
                             color: completado
@@ -542,8 +635,8 @@ class _HabitDetailScreenState extends State<HabitDetailScreen> {
                   ),
                   const SizedBox(height: 6),
                   Text(labels[dayIndex],
-                      style: TextStyle(
-                          color: Colors.grey[500], fontSize: 11)),
+                      style:
+                          TextStyle(color: Colors.grey[500], fontSize: 11)),
                 ],
               );
             }),
@@ -579,8 +672,6 @@ class _HabitDetailScreenState extends State<HabitDetailScreen> {
     );
   }
 
-  // ─── Gráfica grupal ─────────────────────────────────────────────
-
   Widget _buildGrupalChart() {
     if (_estadisticasGrupo.isEmpty) {
       return const Text('No hay datos del grupo',
@@ -598,12 +689,14 @@ class _HabitDetailScreenState extends State<HabitDetailScreen> {
     ];
 
     final data = miembros
-        .map((e) => List<bool>.from(e.value['dias'] ?? List.filled(7, false)))
+        .map((e) =>
+            List<bool>.from(e.value['dias'] ?? List.filled(7, false)))
         .toList();
-    final nombres =
-        miembros.map((e) => e.value['nombre'] as String? ?? 'Usuario').toList();
-    final colores = List.generate(
-        miembros.length, (i) => coloresMiembros[i % coloresMiembros.length]);
+    final nombres = miembros
+        .map((e) => e.value['nombre'] as String? ?? 'Usuario')
+        .toList();
+    final colores = List.generate(miembros.length,
+        (i) => coloresMiembros[i % coloresMiembros.length]);
 
     return _buildBarChart(
       data: data,
