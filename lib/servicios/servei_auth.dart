@@ -22,8 +22,6 @@ class ServeiAuth {
           "totalHabitosCompletados": 0,
         });
         print("✅ Usuario guardado en Firestore: $uid");
-
-        // Usamos el mismo HabitService con el usuario ya autenticado
         final habitService = HabitService();
         await habitService.crearHabitosDefecto();
         print("✅ Hábitos por defecto creados");
@@ -72,6 +70,24 @@ class ServeiAuth {
       }
     } on FirebaseException catch (e) {
       return "Error desconegut: ${e.message}";
+    }
+  }
+
+  /// Envía un email de recuperación de contraseña.
+  /// Devuelve null si fue bien, o un mensaje de error.
+  Future<String?> recuperarContrasenya(String email) async {
+    try {
+      await _auth.sendPasswordResetEmail(email: email.trim());
+      return null;
+    } on FirebaseAuthException catch (e) {
+      switch (e.code) {
+        case "user-not-found":
+          return "No existe ninguna cuenta con este correo";
+        case "invalid-email":
+          return "El correo introducido no es válido";
+        default:
+          return "Error al enviar el correo: ${e.message}";
+      }
     }
   }
 

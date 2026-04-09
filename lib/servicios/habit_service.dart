@@ -58,11 +58,14 @@ class HabitService {
           'recordRacha': 0,
           'totalCompletados': 0,
           'esDefecto': true,
+          'esGrupal': false,
+          'grupoId': null,
+          'historial': [],
         });
       }
       await batch.commit();
     } catch (e) {
-      // ignore silently
+      print('Error creando hábitos por defecto: $e');
     }
   }
 
@@ -77,7 +80,7 @@ class HabitService {
         );
   }
 
-  /// Crea un nuevo hábito personalizado.
+  /// Crea un nuevo hábito individual.
   Future<void> crearHabito({
     required String nombre,
     required String emoji,
@@ -98,11 +101,60 @@ class HabitService {
       'recordRacha': 0,
       'totalCompletados': 0,
       'esDefecto': false,
+      'esGrupal': false,
+      'grupoId': null,
+      'historial': [],
     });
   }
 
-  /// Alterna el estado completado/no completado de un hábito para hoy.
-  /// Actualiza la racha y el contador global del usuario.
+  /// Crea un hábito grupal vinculado a un grupo.
+  Future<void> crearHabitoGrupal({
+    required String nombre,
+    required String emoji,
+    required String descripcion,
+    required String frecuencia,
+    required String grupoId,
+  }) async {
+    final ref = _habitsRef;
+    if (ref == null) return;
+
+    await ref.add({
+      'nombre': nombre,
+      'emoji': emoji,
+      'descripcion': descripcion,
+      'frecuencia': frecuencia,
+      'fechaCreacion': FieldValue.serverTimestamp(),
+      'fechaUltimoCompletado': null,
+      'rachaActual': 0,
+      'recordRacha': 0,
+      'totalCompletados': 0,
+      'esDefecto': false,
+      'esGrupal': true,
+      'grupoId': grupoId,
+      'historial': [],
+    });
+  }
+
+  /// Edita los datos de un hábito existente.
+  Future<void> editarHabito({
+    required String habitId,
+    required String nombre,
+    required String emoji,
+    required String descripcion,
+    required String frecuencia,
+  }) async {
+    final ref = _habitsRef;
+    if (ref == null) return;
+
+    await ref.doc(habitId).update({
+      'nombre': nombre,
+      'emoji': emoji,
+      'descripcion': descripcion,
+      'frecuencia': frecuencia,
+    });
+  }
+
+  /// Alterna el estado completado/no completado de un hábito para el período actual.
   Future<void> toggleCompletado(Habit habit) async {
     final ref = _habitsRef;
     final uid = _uid;
@@ -128,8 +180,20 @@ class HabitService {
           'totalHabitosCompletados': FieldValue.increment(-1),
         });
       }
+      // Eliminar del historial el registro de hoy
+      final ahora = DateTime.now();
+      final hoyStr = '${ahora.year}-${ahora.month}-${ahora.day}';
+      final snap = await docRef.get();
+      final historial =
+          List<Map<String, dynamic>>.from(snap.data()?['historial'] ?? []);
+      historial.removeWhere((e) {
+        final f = (e['fecha'] as Timestamp?)?.toDate();
+        if (f == null) return false;
+        return '${f.year}-${f.month}-${f.day}' == hoyStr;
+      });
+      await docRef.update({'historial': historial});
     } else {
-      // Marcar como completado hoy
+      // Marcar como completado
       final ahora = DateTime.now();
       int nuevaRacha = 1;
 
@@ -149,12 +213,49 @@ class HabitService {
         'rachaActual': nuevaRacha,
         'recordRacha': nuevoRecord,
         'totalCompletados': FieldValue.increment(1),
+        'historial': FieldValue.arrayUnion([
+          {'fecha': Timestamp.fromDate(ahora)}
+        ]),
       });
-      // Usar set con merge para crear el campo si no existe
+
       await userRef.set(
         {'totalHabitosCompletados': FieldValue.increment(1)},
         SetOptions(merge: true),
       );
+    }
+  }
+
+  /// Obtiene el historial de completados de los últimos 7 días para un hábito.
+  /// Devuelve una lista de 7 bools (índice 0 = hace 6 días, índice 6 = hoy)
+  Future<List<bool>> obtenerHistorial7Dias(String habitId) async {
+    final ref = _habitsRef;
+    if (ref == null) return List.filled(7, false);
+
+    try {
+      final doc = await ref.doc(habitId).get();
+      if (!doc.exists) return List.filled(7, false);
+
+      final historial =
+          List<Map<String, dynamic>>.from(doc.data()?['historial'] ?? []);
+
+      final ahora = DateTime.now();
+      final resultado = List<bool>.filled(7, false);
+
+      for (int i = 0; i < 7; i++) {
+        final dia = DateTime(ahora.year, ahora.month, ahora.day)
+            .subtract(Duration(days: 6 - i));
+        resultado[i] = historial.any((e) {
+          final f = (e['fecha'] as Timestamp?)?.toDate();
+          if (f == null) return false;
+          return f.year == dia.year &&
+              f.month == dia.month &&
+              f.day == dia.day;
+        });
+      }
+
+      return resultado;
+    } catch (e) {
+      return List.filled(7, false);
     }
   }
 
