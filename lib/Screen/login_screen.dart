@@ -8,7 +8,7 @@ import '../widgets/responsive_utils.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../servicios/servei_auth.dart';
-import 'MainScreen.dart';
+import 'package:app_habitcrew/Screen/pantallaCarrega.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -28,16 +28,16 @@ class _LoginScreenState extends State<LoginScreen>
   bool _isLoginMode = true;
   bool _obscurePassword = true;
   late AnimationController _animationController;
-  
+
   // Lista de ondas activas
   final List<Wave> _waves = [];
   final Random _random = Random();
   final List<Color> _waveColors = [
-    const Color(0xFF4CAF50),      // Verde brillante
-    const Color(0xFF43A047),      // Verde oscuro
-    const Color(0xFF81C784),      // Verde claro
-    const Color(0xFF66BB6A),      // Verde intermedio
-    const Color(0xFFA5D6A7),      // Verde pastel
+    const Color(0xFF58CC02), // Verde Duolingo
+    const Color(0xFF7CFF33), // Verde brillante
+    const Color(0xFFA5D6A7), // Verde pastel
+    const Color(0xFF43A047), // Verde oscuro
+    const Color(0xFF81C784), // Verde claro
   ];
 
   @override
@@ -86,10 +86,10 @@ class _LoginScreenState extends State<LoginScreen>
       if (!mounted) return;
 
       setState(() => _isLoading = true);
-      
+
       final ServeiAuth authService = ServeiAuth();
       String? error;
-      
+
       try {
         if (_isLoginMode) {
           // Modo Login
@@ -111,7 +111,7 @@ class _LoginScreenState extends State<LoginScreen>
         if (error == null) {
           // Éxito
           if (!mounted) return;
-          
+
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(
@@ -122,25 +122,20 @@ class _LoginScreenState extends State<LoginScreen>
             ),
           );
 
-          // Navegar a MainScreen después de 1 segundo
-          await Future.delayed(const Duration(seconds: 1));
-          
+          // Navegar a Pantallacarrega
           if (!mounted) return;
           Navigator.pushReplacement(
             context,
-            MaterialPageRoute(builder: (context) => const MainScreen()),
+            MaterialPageRoute(builder: (context) => const Pantallacarrega()),
           );
         } else {
           // Error
           if (!mounted) return;
           setState(() => _isLoading = false);
-          
+
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(
-                error,
-                style: const TextStyle(color: Colors.white),
-              ),
+              content: Text(error, style: const TextStyle(color: Colors.white)),
               backgroundColor: Colors.red,
             ),
           );
@@ -148,7 +143,7 @@ class _LoginScreenState extends State<LoginScreen>
       } catch (e) {
         if (!mounted) return;
         setState(() => _isLoading = false);
-        
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
@@ -170,16 +165,18 @@ class _LoginScreenState extends State<LoginScreen>
   void _createWave(Offset position) {
     setState(() {
       // Crear SOLAMENTE UNA onda grande principal
-      _waves.add(Wave(
-        center: position,
-        radius: 0,
-        maxRadius: 250 + _random.nextDouble() * 150, // Radio máximo
-        opacity: 1.0, // Máxima opacidad
-        width: 5 + _random.nextDouble() * 3, // Grosor
-        speed: 2.5 + _random.nextDouble() * 1.5, // Velocidad
-        color: _waveColors[_random.nextInt(_waveColors.length)],
-        isGlow: true, // Efecto de brillo
-      ));
+      _waves.add(
+        Wave(
+          center: position,
+          radius: 0,
+          maxRadius: 250 + _random.nextDouble() * 150, // Radio máximo
+          opacity: 1.0, // Máxima opacidad
+          width: 5 + _random.nextDouble() * 3, // Grosor
+          speed: 2.5 + _random.nextDouble() * 1.5, // Velocidad
+          color: _waveColors[_random.nextInt(_waveColors.length)],
+          isGlow: true, // Efecto de brillo
+        ),
+      );
     });
   }
 
@@ -240,19 +237,7 @@ class _LoginScreenState extends State<LoginScreen>
                 Container(
                   width: double.infinity,
                   height: double.infinity,
-                  decoration: BoxDecoration(
-                    gradient: RadialGradient(
-                      center: Alignment.center,
-                      radius: 1.5,
-                      colors: [
-                        Colors.white,
-                        const Color(0xFFF1F8E9),
-                        const Color(0xFFE8F5E9),
-                        const Color(0xFFC8E6C9),
-                      ],
-                      stops: const [0.0, 0.4, 0.7, 1.0],
-                    ),
-                  ),
+                  decoration: BoxDecoration(color: Colors.black),
                 ),
 
                 // FONDO INTERACTIVO CON ONDAS
@@ -263,13 +248,14 @@ class _LoginScreenState extends State<LoginScreen>
                     for (int i = _waves.length - 1; i >= 0; i--) {
                       final wave = _waves[i];
                       wave.radius += wave.speed;
-                      wave.opacity -= wave.speed * 0.005; // Desvanecimiento más lento
-                      
+                      wave.opacity -=
+                          wave.speed * 0.005; // Desvanecimiento más lento
+
                       if (wave.radius > wave.maxRadius || wave.opacity <= 0) {
                         _waves.removeAt(i);
                       }
                     }
-                    
+
                     return CustomPaint(
                       painter: WavePainter(_waves),
                       size: Size(screenWidth, screenHeight),
@@ -311,7 +297,9 @@ class _LoginScreenState extends State<LoginScreen>
                           child: Container(
                             padding: EdgeInsets.symmetric(
                               horizontal: screenPadding,
-                              vertical: isUltraSmallScreen ? 8.0 : (isDesktop ? 30.0 : screenPadding),
+                              vertical: isUltraSmallScreen
+                                  ? 8.0
+                                  : (isDesktop ? 30.0 : screenPadding),
                             ),
                             child: Column(
                               mainAxisAlignment: MainAxisAlignment.center,
@@ -319,15 +307,25 @@ class _LoginScreenState extends State<LoginScreen>
                               children: [
                                 // Logo condicional
                                 if (!isUltraSmallScreen) ...[
-                                  if (isDesktop) SizedBox(height: isUltraSmallScreen ? 4.0 : spacing),
+                                  if (isDesktop)
+                                    SizedBox(
+                                      height: isUltraSmallScreen
+                                          ? 4.0
+                                          : spacing,
+                                    ),
                                   DuolingoLogo(
-                                    withText: !isMobile || isLandscape || isDesktop,
+                                    withText:
+                                        !isMobile || isLandscape || isDesktop,
                                   ),
-                                  SizedBox(height: isUltraSmallScreen ? 8.0 : spacing),
+                                  SizedBox(
+                                    height: isUltraSmallScreen ? 8.0 : spacing,
+                                  ),
                                 ],
 
                                 Container(
-                                  constraints: BoxConstraints(maxWidth: maxCardWidth),
+                                  constraints: BoxConstraints(
+                                    maxWidth: maxCardWidth,
+                                  ),
                                   width: double.infinity,
                                   child: Column(
                                     mainAxisSize: MainAxisSize.min,
@@ -337,13 +335,17 @@ class _LoginScreenState extends State<LoginScreen>
                                             ? '¡Hola de Nuevo!'
                                             : '¡Únete a Nosotros!',
                                         style: TextStyle(
-                                          fontSize: isUltraSmallScreen ? 16.0 : titleFontSize,
+                                          fontSize: isUltraSmallScreen
+                                              ? 16.0
+                                              : titleFontSize,
                                           fontWeight: FontWeight.w900,
-                                          color: Colors.black87,
+                                          color: Colors.white,
                                           shadows: [
                                             Shadow(
                                               blurRadius: 10,
-                                              color: Colors.white.withOpacity(0.5),
+                                              color: Colors.black.withOpacity(
+                                                0.5,
+                                              ),
                                               offset: const Offset(2, 2),
                                             ),
                                           ],
@@ -353,20 +355,22 @@ class _LoginScreenState extends State<LoginScreen>
                                         overflow: TextOverflow.ellipsis,
                                       ),
 
-                                      SizedBox(height: isUltraSmallScreen ? 4.0 : spacing * 0.5),
-
                                       Text(
                                         _isLoginMode
                                             ? 'Inicia sesión para continuar'
                                             : 'Crea tu cuenta y empieza',
                                         style: TextStyle(
-                                          fontSize: isUltraSmallScreen ? 10.0 : subtitleFontSize,
-                                          color: Colors.black54,
+                                          fontSize: isUltraSmallScreen
+                                              ? 10.0
+                                              : subtitleFontSize,
+                                          color: Colors.white70,
                                           fontWeight: FontWeight.w500,
                                           shadows: [
                                             Shadow(
                                               blurRadius: 5,
-                                              color: Colors.white.withOpacity(0.3),
+                                              color: Colors.white.withOpacity(
+                                                0.3,
+                                              ),
                                               offset: const Offset(1, 1),
                                             ),
                                           ],
@@ -376,7 +380,11 @@ class _LoginScreenState extends State<LoginScreen>
                                         overflow: TextOverflow.ellipsis,
                                       ),
 
-                                      SizedBox(height: isUltraSmallScreen ? 12.0 : spacing * 1.5),
+                                      SizedBox(
+                                        height: isUltraSmallScreen
+                                            ? 12.0
+                                            : spacing * 1.5,
+                                      ),
 
                                       Container(
                                         width: formWidth,
@@ -391,9 +399,14 @@ class _LoginScreenState extends State<LoginScreen>
                                                 hintText: 'ejemplo_usuario',
                                                 prefixIcon: Icons.person,
                                                 validator: _validateUsername,
-                                                isUltraSmall: isUltraSmallScreen,
+                                                isUltraSmall:
+                                                    isUltraSmallScreen,
                                               ),
-                                              SizedBox(height: isUltraSmallScreen ? 8.0 : spacing),
+                                              SizedBox(
+                                                height: isUltraSmallScreen
+                                                    ? 8.0
+                                                    : spacing,
+                                              ),
                                             ],
 
                                             _buildCompactTextField(
@@ -406,7 +419,11 @@ class _LoginScreenState extends State<LoginScreen>
                                               isUltraSmall: isUltraSmallScreen,
                                             ),
 
-                                            SizedBox(height: isUltraSmallScreen ? 8.0 : spacing),
+                                            SizedBox(
+                                              height: isUltraSmallScreen
+                                                  ? 8.0
+                                                  : spacing,
+                                            ),
 
                                             _buildPasswordField(
                                               context,
@@ -415,34 +432,68 @@ class _LoginScreenState extends State<LoginScreen>
                                             ),
 
                                             if (_isLoginMode) ...[
-                                              SizedBox(height: isUltraSmallScreen ? 6.0 : spacing * 0.5),
+                                              SizedBox(
+                                                height: isUltraSmallScreen
+                                                    ? 6.0
+                                                    : spacing * 0.5,
+                                              ),
                                               Align(
-                                                alignment: Alignment.centerRight,
+                                                alignment:
+                                                    Alignment.centerRight,
                                                 child: GestureDetector(
                                                   onTap: () {
-                                                    ScaffoldMessenger.of(context).showSnackBar(
+                                                    ScaffoldMessenger.of(
+                                                      context,
+                                                    ).showSnackBar(
                                                       SnackBar(
-                                                        content: const Text('Recuperación de contraseña'),
-                                                        backgroundColor: const Color(0xFF4CAF50),
+                                                        content: const Text(
+                                                          'Recuperación de contraseña',
+                                                        ),
+                                                        backgroundColor:
+                                                            const Color(
+                                                              0xFF58CC02,
+                                                            ),
                                                       ),
                                                     );
                                                   },
                                                   child: Padding(
-                                                    padding: EdgeInsets.symmetric(
-                                                      horizontal: isUltraSmallScreen ? 4.0 : 8.0,
-                                                      vertical: isUltraSmallScreen ? 2.0 : 4.0,
-                                                    ),
+                                                    padding:
+                                                        EdgeInsets.symmetric(
+                                                          horizontal:
+                                                              isUltraSmallScreen
+                                                              ? 4.0
+                                                              : 8.0,
+                                                          vertical:
+                                                              isUltraSmallScreen
+                                                              ? 2.0
+                                                              : 4.0,
+                                                        ),
                                                     child: Text(
                                                       '¿Olvidaste tu contraseña?',
                                                       style: TextStyle(
-                                                        color: const Color(0xFF2E7D32),
-                                                        fontSize: isUltraSmallScreen ? 9.0 : (isMobile ? 12.0 : 14.0),
-                                                        fontWeight: FontWeight.w700,
+                                                        color: const Color(
+                                                          0xFF58CC02,
+                                                        ),
+                                                        fontSize:
+                                                            isUltraSmallScreen
+                                                            ? 9.0
+                                                            : (isMobile
+                                                                  ? 12.0
+                                                                  : 14.0),
+                                                        fontWeight:
+                                                            FontWeight.w700,
                                                         shadows: [
                                                           Shadow(
                                                             blurRadius: 3,
-                                                            color: Colors.white.withOpacity(0.5),
-                                                            offset: const Offset(1, 1),
+                                                            color: Colors.white
+                                                                .withOpacity(
+                                                                  0.5,
+                                                                ),
+                                                            offset:
+                                                                const Offset(
+                                                                  1,
+                                                                  1,
+                                                                ),
                                                           ),
                                                         ],
                                                       ),
@@ -452,17 +503,29 @@ class _LoginScreenState extends State<LoginScreen>
                                               ),
                                             ],
 
-                                            SizedBox(height: isUltraSmallScreen ? 12.0 : spacing * 1.5),
+                                            SizedBox(
+                                              height: isUltraSmallScreen
+                                                  ? 12.0
+                                                  : spacing * 1.5,
+                                            ),
 
                                             _buildCompactButton(
-                                              text: _isLoginMode ? 'Iniciar Sesión' : 'Crear Cuenta',
+                                              text: _isLoginMode
+                                                  ? 'Iniciar Sesión'
+                                                  : 'Crear Cuenta',
                                               onPressed: _handleSubmit,
                                               isLoading: _isLoading,
-                                              backgroundColor: const Color(0xFF4CAF50),
+                                              backgroundColor: const Color(
+                                                0xFF58CC02,
+                                              ),
                                               isUltraSmall: isUltraSmallScreen,
                                             ),
 
-                                            SizedBox(height: isUltraSmallScreen ? 8.0 : spacing),
+                                            SizedBox(
+                                              height: isUltraSmallScreen
+                                                  ? 8.0
+                                                  : spacing,
+                                            ),
 
                                             _buildCompactOutlinedButton(
                                               text: _isLoginMode
@@ -475,62 +538,125 @@ class _LoginScreenState extends State<LoginScreen>
                                             // TÉRMINOS Y CONDICIONES COMPACTO
                                             Padding(
                                               padding: EdgeInsets.only(
-                                                top: isUltraSmallScreen ? 8.0 : spacing,
+                                                top: isUltraSmallScreen
+                                                    ? 8.0
+                                                    : spacing,
                                               ),
                                               child: Container(
-                                                padding: EdgeInsets.all(isUltraSmallScreen ? 6.0 : (isMobile ? 10.0 : 12.0)),
+                                                padding: EdgeInsets.all(
+                                                  isUltraSmallScreen
+                                                      ? 6.0
+                                                      : (isMobile
+                                                            ? 10.0
+                                                            : 12.0),
+                                                ),
                                                 decoration: BoxDecoration(
-                                                  color: Colors.white.withOpacity(0.9),
-                                                  borderRadius: BorderRadius.circular(isUltraSmallScreen ? 8.0 : 12.0),
+                                                  color: Colors.black
+                                                      .withOpacity(0.7),
+                                                  borderRadius:
+                                                      BorderRadius.circular(
+                                                        isUltraSmallScreen
+                                                            ? 8.0
+                                                            : 12.0,
+                                                      ),
                                                   border: Border.all(
-                                                    color: const Color(0xFF4CAF50).withOpacity(0.3),
+                                                    color: const Color(
+                                                      0xFF58CC02,
+                                                    ).withOpacity(0.3),
                                                     width: 1.5,
                                                   ),
                                                   boxShadow: [
                                                     BoxShadow(
-                                                      color: Colors.green.withOpacity(0.2),
+                                                      color: const Color(
+                                                        0xFF58CC02,
+                                                      ).withOpacity(0.2),
                                                       blurRadius: 10,
                                                       spreadRadius: 2,
                                                     ),
                                                   ],
                                                 ),
                                                 child: Column(
-                                                  mainAxisSize: MainAxisSize.min,
+                                                  mainAxisSize:
+                                                      MainAxisSize.min,
                                                   children: [
                                                     Row(
-                                                      mainAxisAlignment: MainAxisAlignment.center,
+                                                      mainAxisAlignment:
+                                                          MainAxisAlignment
+                                                              .center,
                                                       children: [
                                                         Icon(
                                                           Icons.shield,
-                                                          color: const Color(0xFF4CAF50),
-                                                          size: isUltraSmallScreen ? 10.0 : (isMobile ? 14.0 : 16.0),
+                                                          color: const Color(
+                                                            0xFF58CC02,
+                                                          ),
+                                                          size:
+                                                              isUltraSmallScreen
+                                                              ? 10.0
+                                                              : (isMobile
+                                                                    ? 14.0
+                                                                    : 16.0),
                                                         ),
-                                                        SizedBox(width: isUltraSmallScreen ? 3.0 : (isMobile ? 6.0 : 8.0)),
+                                                        SizedBox(
+                                                          width:
+                                                              isUltraSmallScreen
+                                                              ? 3.0
+                                                              : (isMobile
+                                                                    ? 6.0
+                                                                    : 8.0),
+                                                        ),
                                                         Flexible(
                                                           child: Text(
                                                             'Seguro y Confiable',
                                                             style: TextStyle(
-                                                              color: const Color(0xFF2E7D32),
-                                                              fontSize: isUltraSmallScreen ? 8.0 : (isMobile ? 10.0 : 11.0),
-                                                              fontWeight: FontWeight.w700,
+                                                              color:
+                                                                  const Color(
+                                                                    0xFF58CC02,
+                                                                  ),
+                                                              fontSize:
+                                                                  isUltraSmallScreen
+                                                                  ? 8.0
+                                                                  : (isMobile
+                                                                        ? 10.0
+                                                                        : 11.0),
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .w700,
                                                             ),
                                                             maxLines: 1,
-                                                            overflow: TextOverflow.ellipsis,
+                                                            overflow:
+                                                                TextOverflow
+                                                                    .ellipsis,
                                                           ),
                                                         ),
                                                       ],
                                                     ),
-                                                    SizedBox(height: isUltraSmallScreen ? 2.0 : (isMobile ? 4.0 : 6.0)),
+                                                    SizedBox(
+                                                      height: isUltraSmallScreen
+                                                          ? 2.0
+                                                          : (isMobile
+                                                                ? 4.0
+                                                                : 6.0),
+                                                    ),
                                                     Text(
                                                       'Al continuar, aceptas nuestros Términos y Política de Privacidad',
-                                                      textAlign: TextAlign.center,
+                                                      textAlign:
+                                                          TextAlign.center,
                                                       style: TextStyle(
-                                                        color: const Color(0xFF388E3C),
-                                                        fontSize: isUltraSmallScreen ? 6.0 : (isMobile ? 8.0 : 9.0),
-                                                        fontWeight: FontWeight.w500,
+                                                        color: const Color(
+                                                          0xFF388E3C,
+                                                        ),
+                                                        fontSize:
+                                                            isUltraSmallScreen
+                                                            ? 6.0
+                                                            : (isMobile
+                                                                  ? 8.0
+                                                                  : 9.0),
+                                                        fontWeight:
+                                                            FontWeight.w500,
                                                       ),
                                                       maxLines: 2,
-                                                      overflow: TextOverflow.ellipsis,
+                                                      overflow:
+                                                          TextOverflow.ellipsis,
                                                     ),
                                                   ],
                                                 ),
@@ -658,12 +784,12 @@ class _LoginScreenState extends State<LoginScreen>
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(isUltraSmall ? 15.0 : 20.0),
         border: Border.all(
-          color: const Color(0xFF388E3C),
+          color: const Color(0xFF58CC02),
           width: isUltraSmall ? 2.0 : 2.5,
         ),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF388E3C).withOpacity(0.5),
+            color: const Color(0xFF58CC02).withOpacity(0.5),
             blurRadius: isUltraSmall ? 12.0 : 20.0,
             spreadRadius: isUltraSmall ? 1.0 : 2.0,
             offset: const Offset(0, 5),
@@ -675,8 +801,8 @@ class _LoginScreenState extends State<LoginScreen>
         child: DuolingoButton(
           text: text,
           onPressed: onPressed,
-          backgroundColor: Colors.white,
-          textColor: const Color(0xFF388E3C),
+          backgroundColor: Colors.black,
+          textColor: const Color(0xFF58CC02),
           isGradient: false,
           isOutlined: true,
         ),
@@ -732,12 +858,8 @@ class WavePainter extends CustomPainter {
 
           paint.color = Colors.white.withOpacity(glowOpacity);
           paint.strokeWidth = wave.width * 2 - i * (wave.width * 0.6);
-          
-          canvas.drawCircle(
-            wave.center,
-            wave.radius + i * 4,
-            paint,
-          );
+
+          canvas.drawCircle(wave.center, wave.radius + i * 4, paint);
         }
       }
 
