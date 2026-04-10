@@ -6,6 +6,7 @@ import 'package:app_habitcrew/servicios/friend_service.dart';
 import 'package:app_habitcrew/servicios/servei_auth.dart';
 import 'package:app_habitcrew/Screen/friend_profile_screen.dart';
 import 'package:app_habitcrew/Screen/login_screen.dart';
+import 'package:app_habitcrew/Screen/group_chat_screen.dart';
 
 class EpicPanel extends StatefulWidget {
   const EpicPanel({super.key});
@@ -527,10 +528,14 @@ class _EpicPanelState extends State<EpicPanel>
     return GestureDetector(
       onTap: () {
         Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Chat de "${grupo['nombreHabito']}" — próximamente'),
-            backgroundColor: const Color(0xFF3B82F6),
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => GroupChatScreen(
+              grupoId: grupo['id'] as String,
+              nombreGrupo: grupo['nombreHabito'] as String? ?? 'Grupo',
+              emoji: grupo['emoji'] as String? ?? '👥',
+            ),
           ),
         );
       },

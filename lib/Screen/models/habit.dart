@@ -17,6 +17,9 @@ class Habit {
   final bool esGrupal;
   final String? grupoId;
 
+  // Configuración de notificaciones
+  final Map<String, dynamic>? notificacion;
+
   Habit({
     required this.id,
     required this.nombre,
@@ -31,6 +34,7 @@ class Habit {
     required this.esDefecto,
     this.esGrupal = false,
     this.grupoId,
+    this.notificacion,
   });
 
   /// true si el hábito ya fue completado en el período actual
@@ -83,6 +87,7 @@ class Habit {
       esDefecto: data['esDefecto'] ?? false,
       esGrupal: data['esGrupal'] ?? false,
       grupoId: data['grupoId'] as String?,
+      notificacion: data['notificacion'] as Map<String, dynamic>?,
     );
   }
 }
