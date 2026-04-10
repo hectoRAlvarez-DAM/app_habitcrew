@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:app_habitcrew/Widgets/animated_background.dart';
 import 'package:app_habitcrew/Widgets/glassmorphism_card.dart';
 import 'package:app_habitcrew/servicios/friend_service.dart';
+import 'package:app_habitcrew/servicios/achievement_service.dart';
 
 class FriendProfileScreen extends StatefulWidget {
   final String friendUid;
@@ -25,6 +26,7 @@ class _FriendProfileScreenState extends State<FriendProfileScreen> {
   Map<String, dynamic>? _userData;
   List<Map<String, dynamic>> _habitos = [];
   List<bool> _historialGlobal = List.filled(7, false);
+  List<String> _insigniasEquipadas = [];
   bool _loading = true;
 
   @override
@@ -50,6 +52,8 @@ class _FriendProfileScreenState extends State<FriendProfileScreen> {
         _userData = userData;
         _habitos = habitos;
         _historialGlobal = historial;
+        _insigniasEquipadas = List<String>.from(
+            userData?['insigniasEquipadas'] ?? []);
         _loading = false;
       });
     }
@@ -250,6 +254,61 @@ class _FriendProfileScreenState extends State<FriendProfileScreen> {
                           ),
                         ),
                       ),
+
+                      const SizedBox(height: 20),
+
+                      // ── Insignias equipadas ──────────────────────
+                      if (_insigniasEquipadas.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 20),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'INSIGNIAS',
+                                style: TextStyle(
+                                  color: Colors.white54,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: 1.2,
+                                ),
+                              ),
+                              const SizedBox(height: 10),
+                              Wrap(
+                                spacing: 8,
+                                runSpacing: 8,
+                                children: _insigniasEquipadas.map((id) {
+                                  final def = AchievementService.getById(id);
+                                  if (def == null) return const SizedBox();
+                                  return Container(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 10, vertical: 6),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFF2B2D31),
+                                      borderRadius: BorderRadius.circular(20),
+                                      border: Border.all(
+                                          color: const Color(0xFF22C55E)
+                                              .withValues(alpha: 0.4)),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(def.icon,
+                                            color: const Color(0xFF22C55E),
+                                            size: 14),
+                                        const SizedBox(width: 4),
+                                        Text(def.title,
+                                            style: const TextStyle(
+                                                color: Colors.white,
+                                                fontSize: 12)),
+                                      ],
+                                    ),
+                                  );
+                                }).toList(),
+                              ),
+                            ],
+                          ),
+                        ),
 
                       const SizedBox(height: 20),
 

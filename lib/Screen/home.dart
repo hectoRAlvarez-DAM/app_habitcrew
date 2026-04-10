@@ -6,6 +6,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../servicios/servei_auth.dart';
 import '../servicios/habit_service.dart';
+import '../servicios/achievement_service.dart';
 import 'models/habit.dart';
 import 'login_screen.dart';
 import 'habit_detail_screen.dart';
@@ -86,6 +87,8 @@ class _HomeState extends State<Home> {
     super.initState();
     _cargarNombreUsuario();
     _habitService.crearHabitosDefecto();
+    // Asignar insignia beta a todos los usuarios
+    AchievementService().asignarInsigniaBeta();
     _habitSub = _habitService.obtenerHabitos().listen(
       (habitos) {
         if (mounted) setState(() => _habitos = habitos);

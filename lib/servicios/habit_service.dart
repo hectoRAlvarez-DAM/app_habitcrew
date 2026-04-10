@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../Screen/models/habit.dart';
+import 'achievement_service.dart';
 
 class HabitService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -65,7 +66,7 @@ class HabitService {
       }
       await batch.commit();
     } catch (e) {
-      print('Error creando hábitos por defecto: $e');
+      // ignore silently
     }
   }
 
@@ -222,7 +223,39 @@ class HabitService {
         {'totalHabitosCompletados': FieldValue.increment(1)},
         SetOptions(merge: true),
       );
+
+      // Comprobar logros nuevos en background
+      AchievementService().comprobarLogros();
+
+      // Comprobar si todos los hábitos de hoy están completados
+      _comprobarDiaPerfecto();
     }
+  }
+
+  /// Comprueba si todos los hábitos diarios están completados hoy
+  /// y registra un día perfecto si es así.
+  Future<void> _comprobarDiaPerfecto() async {
+    try {
+      final ref = _habitsRef;
+      if (ref == null) return;
+      final snap = await ref.where('frecuencia', isEqualTo: 'Diario').get();
+      if (snap.docs.isEmpty) return;
+
+      final ahora = DateTime.now();
+      final todoCompletados = snap.docs.every((doc) {
+        final data = doc.data();
+        final timestamp = data['fechaUltimoCompletado'] as Timestamp?;
+        if (timestamp == null) return false;
+        final fecha = timestamp.toDate();
+        return fecha.year == ahora.year &&
+            fecha.month == ahora.month &&
+            fecha.day == ahora.day;
+      });
+
+      if (todoCompletados) {
+        await AchievementService().registrarDiaPerfecto();
+      }
+    } catch (_) {}
   }
 
   /// Obtiene el historial de completados de los últimos 7 días para un hábito.
