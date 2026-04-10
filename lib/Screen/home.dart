@@ -9,6 +9,7 @@ import '../servicios/habit_service.dart';
 import 'models/habit.dart';
 import 'login_screen.dart';
 import 'habit_detail_screen.dart';
+import 'epic_panel.dart';
 
 class GlassmorphismSection extends StatelessWidget {
   final String titulo;
@@ -224,36 +225,16 @@ class _HomeState extends State<Home> {
                         ),
                         GlassmorphismCard(
                           onTap: () {
-                            showDialog(
+                            showGeneralDialog(
                               context: context,
-                              builder: (context) => AlertDialog(
-                                backgroundColor: const Color(0xFF1E1E2E),
-                                title: const Text('Cerrar sesión',
-                                    style: TextStyle(color: Colors.white)),
-                                content: const Text(
-                                    '¿Estás seguro de que deseas cerrar sesión?',
-                                    style: TextStyle(color: Colors.white70)),
-                                actions: [
-                                  TextButton(
-                                    onPressed: () => Navigator.pop(context),
-                                    child: const Text('Cancelar',
-                                        style: TextStyle(color: Colors.grey)),
-                                  ),
-                                  TextButton(
-                                    onPressed: () {
-                                      Navigator.pop(context);
-                                      _cerrarSesion();
-                                    },
-                                    child: const Text('Cerrar sesión',
-                                        style:
-                                            TextStyle(color: Colors.redAccent)),
-                                  ),
-                                ],
-                              ),
+                              barrierDismissible: false,
+                              barrierColor: Colors.transparent,
+                              pageBuilder: (_, __, ___) =>
+                                  const EpicPanel(),
                             );
                           },
                           padding: const EdgeInsets.all(10),
-                          child: const Icon(Icons.logout,
+                          child: const Icon(Icons.menu,
                               color: Colors.white70, size: 20),
                         ),
                       ],

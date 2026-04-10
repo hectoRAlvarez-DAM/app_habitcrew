@@ -1,3 +1,4 @@
+import 'dart:math';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'habit_service.dart';
@@ -5,6 +6,12 @@ import 'habit_service.dart';
 class ServeiAuth {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+
+  String _generarCodigoAmigo() {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    final r = Random();
+    return List.generate(6, (_) => chars[r.nextInt(chars.length)]).join();
+  }
 
   Future<String?> registrarUsuariAmbEmailPassword(
       String email, String password, String username) async {
@@ -20,6 +27,9 @@ class ServeiAuth {
           "nom": username,
           "data_registre": FieldValue.serverTimestamp(),
           "totalHabitosCompletados": 0,
+          "codigoAmigo": _generarCodigoAmigo(),
+          "amigos": [],
+          "solicitudesRecibidas": [],
         });
         print("✅ Usuario guardado en Firestore: $uid");
         final habitService = HabitService();

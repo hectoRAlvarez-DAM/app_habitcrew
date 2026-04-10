@@ -45,6 +45,8 @@ class GroupService {
           'fechaUnion': Timestamp.now(),
         }
       ],
+      // Array plano de UIDs para poder usar arrayContains en queries
+      'miembrosUids': [uid],
     });
 
     return {'grupoId': grupoRef.id, 'codigo': codigo};
@@ -83,6 +85,7 @@ class GroupService {
             'fechaUnion': Timestamp.now(),
           }
         ]),
+        'miembrosUids': FieldValue.arrayUnion([uid]),
       });
     }
 
