@@ -155,6 +155,56 @@ class HabitService {
         {'totalHabitosCompletados': FieldValue.increment(1)},
         SetOptions(merge: true),
       );
+
+      // ── Comprobar si todos los hábitos del día están completados ──────
+      // Si es así, incrementar diasPerfectos (sólo una vez por día)
+      await _checkDiaPerfecto(uid, ref, ahora);
+    }
+  }
+
+  /// Comprueba si todos los hábitos están completados hoy.
+  /// Si es así y no se ha registrado ya hoy, incrementa diasPerfectos.
+  Future<void> _checkDiaPerfecto(
+    String uid,
+    CollectionReference<Map<String, dynamic>> ref,
+    DateTime ahora,
+  ) async {
+    try {
+      final hoy = DateTime(ahora.year, ahora.month, ahora.day);
+      final hoyStr =
+          '${ahora.year}-${ahora.month.toString().padLeft(2, '0')}-${ahora.day.toString().padLeft(2, '0')}';
+
+      // Verificar si ya se contó hoy
+      final diaRef = _firestore
+          .collection('usuaris')
+          .doc(uid)
+          .collection('diasPerfectos')
+          .doc(hoyStr);
+      final diaDoc = await diaRef.get();
+      if (diaDoc.exists) return; // Ya contado hoy
+
+      // Comprobar si todos los hábitos están completados hoy
+      final snap = await ref.get();
+      if (snap.docs.isEmpty) return;
+
+      final todosCompletos = snap.docs.every((doc) {
+        final data = doc.data();
+        final ultimo = (data['fechaUltimoCompletado'] as Timestamp?)?.toDate();
+        if (ultimo == null) return false;
+        final ultimoDia = DateTime(ultimo.year, ultimo.month, ultimo.day);
+        return ultimoDia == hoy;
+      });
+
+      if (todosCompletos) {
+        // Marcar el día como perfecto y sumar al contador
+        await diaRef.set({'fecha': FieldValue.serverTimestamp()});
+        await _firestore.collection('usuaris').doc(uid).set(
+          {'diasPerfectos': FieldValue.increment(1)},
+          SetOptions(merge: true),
+        );
+      }
+    } catch (_) {
+      // No interrumpir el flujo principal si falla
     }
   }
 

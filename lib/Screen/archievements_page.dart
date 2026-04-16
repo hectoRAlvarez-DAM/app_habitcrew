@@ -1,9 +1,9 @@
 import 'package:app_habitcrew/Screen/models/archievement.dart';
 import 'package:app_habitcrew/Screen/models/archievement_category.dart';
 import 'package:app_habitcrew/Widgets/achivement_unlock_overlay.dart';
+import 'package:app_habitcrew/servicios/achievement_service.dart';
 import 'package:app_habitcrew/servicios/coin_service.dart';
 import 'package:flutter/material.dart';
-import '../repositories/achievement_repository.dart';
 import '../widgets/animated_background.dart';
 
 class AchievementsPage extends StatefulWidget {
@@ -14,13 +14,12 @@ class AchievementsPage extends StatefulWidget {
 }
 
 class _AchievementsPageState extends State<AchievementsPage> {
-  final _repository = AchievementRepository();
   List<AchievementCategory> _categories = [];
   bool _isLoading = true;
   String? _expandedCategoryId;
 
-  // IDs de logros cuyas monedas ya han sido reclamadas
-  final Set<String> _claimedIds = {};
+  // IDs de logros cuyas monedas ya han sido reclamadas (cargado desde Firestore)
+  Set<String> _claimedIds = {};
 
   @override
   void initState() {
@@ -38,12 +37,21 @@ class _AchievementsPageState extends State<AchievementsPage> {
   void _onCoinsChanged() => setState(() {});
 
   Future<void> _loadData() async {
+    if (!mounted) return;
     setState(() => _isLoading = true);
-    final categories = await _repository.getCategories();
-    setState(() {
-      _categories = categories;
-      _isLoading = false;
-    });
+    try {
+      final (categories, claimedIds) =
+          await AchievementService.instance.loadUserAchievements();
+      if (!mounted) return;
+      setState(() {
+        _categories = categories;
+        _claimedIds = claimedIds;
+        _isLoading = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+    }
   }
 
   // ─── ESTADÍSTICAS CALCULADAS ─────────────────────────────────────
@@ -54,9 +62,9 @@ class _AchievementsPageState extends State<AchievementsPage> {
   int get _unlockedAchievements =>
       _categories.fold(0, (s, c) => s + c.unlockedAchievements);
 
-  int get _totalCoinsEarned => _categories
+  int get _totalCoinsClaimed => _categories
       .expand((c) => c.achievements)
-      .where((a) => a.isUnlocked)
+      .where((a) => a.isUnlocked && _claimedIds.contains(a.id))
       .fold(0, (s, a) => s + a.coinReward);
 
   int get _coinsToClaim => _categories
@@ -78,10 +86,14 @@ class _AchievementsPageState extends State<AchievementsPage> {
         .fold(0, (s, a) => a.currentValue > s ? a.currentValue : s);
   }
 
-  void _claimCoins(Achievement achievement) {
+  Future<void> _claimCoins(Achievement achievement) async {
     if (_claimedIds.contains(achievement.id)) return;
-    CoinService.instance.add(achievement.coinReward);
+    final success = await AchievementService.instance
+        .claimAchievement(achievement.id, achievement.coinReward);
+    if (!success) return;
+    CoinService.instance.coinsNotifier.value += achievement.coinReward;
     setState(() => _claimedIds.add(achievement.id));
+    if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Row(
@@ -89,6 +101,38 @@ class _AchievementsPageState extends State<AchievementsPage> {
             const Icon(Icons.monetization_on, color: Color(0xFFFFD700)),
             const SizedBox(width: 8),
             Text('+${achievement.coinReward} monedas reclamadas'),
+          ],
+        ),
+        backgroundColor: const Color(0xFF22C55E),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      ),
+    );
+  }
+
+  Future<void> _claimAll() async {
+    final unclaimed = _categories
+        .expand((c) => c.achievements)
+        .where((a) => a.isUnlocked && !_claimedIds.contains(a.id))
+        .toList();
+    if (unclaimed.isEmpty) return;
+
+    final ids = unclaimed.map((a) => a.id).toList();
+    final total = unclaimed.fold(0, (s, a) => s + a.coinReward);
+    final earned =
+        await AchievementService.instance.claimAllAchievements(ids, total);
+    if (earned == 0) return;
+
+    CoinService.instance.coinsNotifier.value += earned;
+    setState(() => _claimedIds.addAll(ids));
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.monetization_on, color: Color(0xFFFFD700)),
+            const SizedBox(width: 8),
+            Text('+$earned monedas reclamadas (${unclaimed.length} logros)'),
           ],
         ),
         backgroundColor: const Color(0xFF22C55E),
@@ -214,8 +258,8 @@ class _AchievementsPageState extends State<AchievementsPage> {
               child: _buildStatCard(
                 icon: Icons.monetization_on,
                 iconColor: const Color(0xFFFFD700),
-                value: '$_totalCoinsEarned 🪙',
-                label: 'Ganadas en logros',
+                value: '$_totalCoinsClaimed 🪙',
+                label: 'Reclamadas',
               ),
             ),
             const SizedBox(width: 10),
@@ -324,6 +368,30 @@ class _AchievementsPageState extends State<AchievementsPage> {
                 ),
               ),
             ),
+            if (_coinsToClaim > 0) ...[
+              const SizedBox(height: 16),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: _claimAll,
+                  icon: const Icon(Icons.redeem,
+                      size: 18, color: Color(0xFFFFD700)),
+                  label: Text(
+                    'Reclamar todo · $_coinsToClaim monedas',
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF22C55E).withOpacity(0.25),
+                    foregroundColor: Colors.white,
+                    side: BorderSide(
+                        color: const Color(0xFF22C55E).withOpacity(0.6)),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+              ),
+            ],
           ],
         ),
       ),
@@ -510,7 +578,7 @@ class _AchievementsPageState extends State<AchievementsPage> {
                     ),
                   ] else if (isClaimed) ...[
                     Text(
-                      '✅ Desbloqueado el ${_formatDate(achievement.unlockedDate!)}',
+                      '✅ Desbloqueado el ${_formatDate(achievement.unlockedDate ?? DateTime.now())}',
                       style: TextStyle(
                         fontSize: 11,
                         color: Colors.green[300],
@@ -524,7 +592,7 @@ class _AchievementsPageState extends State<AchievementsPage> {
                     ),
                   ] else ...[
                     Text(
-                      '✅ Desbloqueado el ${_formatDate(achievement.unlockedDate!)}',
+                      '✅ Desbloqueado el ${_formatDate(achievement.unlockedDate ?? DateTime.now())}',
                       style: TextStyle(
                         fontSize: 11,
                         color: Colors.green[300],

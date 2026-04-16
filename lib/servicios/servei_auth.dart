@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'coin_service.dart';
 import 'habit_service.dart';
 
 class ServeiAuth {
@@ -20,6 +21,9 @@ class ServeiAuth {
           "nom": username,
           "data_registre": FieldValue.serverTimestamp(),
           "totalHabitosCompletados": 0,
+          "monedas": 500,
+          "monedasGanadas": 500,
+          "totalLogros": 0,
         });
         print("✅ Usuario guardado en Firestore: $uid");
 
@@ -76,6 +80,7 @@ class ServeiAuth {
   }
 
   Future<void> ferLogout() async {
+    CoinService.instance.reset();
     await _auth.signOut();
   }
 
