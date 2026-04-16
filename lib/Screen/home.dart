@@ -12,60 +12,8 @@ import 'login_screen.dart';
 import 'habit_detail_screen.dart';
 import 'epic_panel.dart';
 
-class GlassmorphismSection extends StatelessWidget {
-  final String titulo;
-  final Widget contenido;
-  final VoidCallback? onVerTodos;
-
-  const GlassmorphismSection({
-    super.key,
-    required this.titulo,
-    required this.contenido,
-    this.onVerTodos,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24.0),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                titulo,
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.white,
-                ),
-              ),
-              if (onVerTodos != null)
-                TextButton(
-                  onPressed: onVerTodos,
-                  style: TextButton.styleFrom(
-                    padding: EdgeInsets.zero,
-                    minimumSize: const Size(50, 30),
-                  ),
-                  child: Text(
-                    'Ver todos',
-                    style: TextStyle(fontSize: 14, color: Colors.grey[400]),
-                  ),
-                ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 12),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24.0),
-          child: contenido,
-        ),
-      ],
-    );
-  }
-}
+// ─── Filtros disponibles ────────────────────────────────────────────
+enum HabitFilter { todos, diario, semanal, mensual }
 
 class Home extends StatefulWidget {
   const Home({super.key});
@@ -74,7 +22,7 @@ class Home extends StatefulWidget {
   State<Home> createState() => _HomeState();
 }
 
-class _HomeState extends State<Home> {
+class _HomeState extends State<Home> with TickerProviderStateMixin {
   String _userName = '';
   bool _isLoadingName = true;
 
@@ -82,16 +30,38 @@ class _HomeState extends State<Home> {
   List<Habit> _habitos = [];
   StreamSubscription<List<Habit>>? _habitSub;
 
+  HabitFilter _filtroActivo = HabitFilter.todos;
+
+  // Controlador de animación para la entrada del contenido
+  late AnimationController _fadeController;
+  late Animation<double> _fadeAnimation;
+
+  // Para animar el check al completar
+  final Set<String> _habitosAnimando = {};
+
   @override
   void initState() {
     super.initState();
+
+    _fadeController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 500),
+    );
+    _fadeAnimation = CurvedAnimation(
+      parent: _fadeController,
+      curve: Curves.easeOut,
+    );
+
     _cargarNombreUsuario();
     _habitService.crearHabitosDefecto();
-    // Asignar insignia beta a todos los usuarios
     AchievementService().asignarInsigniaBeta();
+
     _habitSub = _habitService.obtenerHabitos().listen(
       (habitos) {
-        if (mounted) setState(() => _habitos = habitos);
+        if (mounted) {
+          setState(() => _habitos = habitos);
+          if (!_fadeController.isCompleted) _fadeController.forward();
+        }
       },
       onError: (e) => debugPrint('Error stream hábitos: $e'),
       cancelOnError: false,
@@ -101,6 +71,7 @@ class _HomeState extends State<Home> {
   @override
   void dispose() {
     _habitSub?.cancel();
+    _fadeController.dispose();
     super.dispose();
   }
 
@@ -163,357 +134,777 @@ class _HomeState extends State<Home> {
   void _abrirDetalle(Habit habit) {
     Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (context) => HabitDetailScreen(habit: habit),
+      PageRouteBuilder(
+        pageBuilder: (_, animation, __) =>
+            HabitDetailScreen(habit: habit),
+        transitionsBuilder: (_, animation, __, child) {
+          return SlideTransition(
+            position: Tween<Offset>(
+              begin: const Offset(1.0, 0.0),
+              end: Offset.zero,
+            ).animate(CurvedAnimation(
+              parent: animation,
+              curve: Curves.easeOutCubic,
+            )),
+            child: child,
+          );
+        },
+        transitionDuration: const Duration(milliseconds: 350),
       ),
     );
   }
 
-  // Filtra hábitos por frecuencia
-  List<Habit> get _habitosDiarios =>
-      _habitos.where((h) => h.frecuencia.toLowerCase() == 'diario').toList();
-  List<Habit> get _habitosSemanales =>
-      _habitos.where((h) => h.frecuencia.toLowerCase() == 'semanal').toList();
-  List<Habit> get _habitosMensuales =>
-      _habitos.where((h) => h.frecuencia.toLowerCase() == 'mensual').toList();
+  Future<void> _toggleHabito(Habit habit) async {
+    setState(() => _habitosAnimando.add(habit.id));
+    await _habitService.toggleCompletado(habit);
+    await Future.delayed(const Duration(milliseconds: 400));
+    if (mounted) setState(() => _habitosAnimando.remove(habit.id));
+  }
+
+  // ─── Filtrado ────────────────────────────────────────────────────
+
+  List<Habit> get _habitosFiltrados {
+    if (_filtroActivo == HabitFilter.diario) {
+      return _habitos
+          .where((h) => h.frecuencia.toLowerCase() == 'diario')
+          .toList();
+    } else if (_filtroActivo == HabitFilter.semanal) {
+      return _habitos
+          .where((h) => h.frecuencia.toLowerCase() == 'semanal')
+          .toList();
+    } else if (_filtroActivo == HabitFilter.mensual) {
+      return _habitos
+          .where((h) => h.frecuencia.toLowerCase() == 'mensual')
+          .toList();
+    }
+    return List.from(_habitos);
+  }
 
   int get _mejorRacha => _habitos.isEmpty
       ? 0
       : _habitos.map((h) => h.rachaActual).reduce((a, b) => a > b ? a : b);
 
-  int get _completadosHoy =>
-      _habitos.where((h) => h.completadoHoy).length;
+  int get _completadosHoy => _habitos.where((h) => h.completadoHoy).length;
+
+  // ─── Build ───────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
     return AnimatedBackground(
       child: SafeArea(
-        child: SingleChildScrollView(
-          child: Column(
-            children: [
-              // Header
-              Container(
-                padding: const EdgeInsets.fromLTRB(24, 20, 24, 16),
-                child: Column(
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            _isLoadingName
-                                ? const SizedBox(
-                                    width: 150,
-                                    height: 36,
-                                    child: LinearProgressIndicator(
-                                      color: Colors.white,
-                                      backgroundColor: Colors.grey,
-                                    ),
-                                  )
-                                : Text(
-                                    '¡Hola, $_userName! 👋',
-                                    style: const TextStyle(
-                                      fontSize: 28,
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.white,
-                                    ),
-                                  ),
-                            const SizedBox(height: 4),
-                            const Text(
-                              'Tu progreso diario',
-                              style: TextStyle(fontSize: 15, color: Colors.grey),
-                            ),
-                          ],
-                        ),
-                        GlassmorphismCard(
-                          onTap: () {
-                            showGeneralDialog(
-                              context: context,
-                              barrierDismissible: false,
-                              barrierColor: Colors.transparent,
-                              pageBuilder: (_, __, ___) =>
-                                  const EpicPanel(),
-                            );
-                          },
-                          padding: const EdgeInsets.all(10),
-                          child: const Icon(Icons.menu,
-                              color: Colors.white70, size: 20),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    // Stats
-                    GlassmorphismCard(
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 16.0),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceAround,
-                          children: [
-                            _buildXpStat('Hoy',
-                                '${_completadosHoy}/${_habitos.length}', '✅'),
-                            _buildXpStat(
-                                'Mejor racha', '$_mejorRacha días', '🔥'),
-                            _buildXpStat(
-                                'Hábitos', '${_habitos.length}', '📋'),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+        child: CustomScrollView(
+          physics: const BouncingScrollPhysics(),
+          slivers: [
+            // ── Header ──────────────────────────────────────────
+            SliverToBoxAdapter(child: _buildHeader()),
 
-              const SizedBox(height: 8),
+            // ── Stats ───────────────────────────────────────────
+            SliverToBoxAdapter(child: _buildStats()),
 
-              // ── Sección DIARIOS ──────────────────────────────────
-              if (_habitosDiarios.isNotEmpty) ...[
-                GlassmorphismSection(
-                  titulo: '📅 Diarios',
-                  contenido: Column(
-                    children: _habitosDiarios
-                        .map((habit) => Padding(
-                              padding: const EdgeInsets.only(bottom: 8),
-                              child: _buildHabitItem(habit),
-                            ))
-                        .toList(),
-                  ),
-                ),
-                const SizedBox(height: 20),
-              ],
+            // ── Barra de progreso del día ────────────────────────
+            SliverToBoxAdapter(child: _buildDayProgress()),
 
-              // ── Sección SEMANALES ────────────────────────────────
-              if (_habitosSemanales.isNotEmpty) ...[
-                GlassmorphismSection(
-                  titulo: '🗓️ Semanales',
-                  contenido: Column(
-                    children: _habitosSemanales
-                        .map((habit) => Padding(
-                              padding: const EdgeInsets.only(bottom: 8),
-                              child: _buildHabitItem(habit),
-                            ))
-                        .toList(),
-                  ),
-                ),
-                const SizedBox(height: 20),
-              ],
+            // ── Chips de filtro ──────────────────────────────────
+            SliverToBoxAdapter(child: _buildFilterChips()),
 
-              // ── Sección MENSUALES ────────────────────────────────
-              if (_habitosMensuales.isNotEmpty) ...[
-                GlassmorphismSection(
-                  titulo: '📆 Mensuales',
-                  contenido: Column(
-                    children: _habitosMensuales
-                        .map((habit) => Padding(
-                              padding: const EdgeInsets.only(bottom: 8),
-                              child: _buildHabitItem(habit),
-                            ))
-                        .toList(),
-                  ),
-                ),
-                const SizedBox(height: 20),
-              ],
+            // ── Lista de hábitos ─────────────────────────────────
+            SliverToBoxAdapter(child: _buildHabitList()),
 
-              // Estado vacío
-              if (_habitos.isEmpty) ...[
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24),
-                  child: _buildEmptyHabits(),
-                ),
-                const SizedBox(height: 20),
-              ],
+            // ── Acciones rápidas ─────────────────────────────────
+            SliverToBoxAdapter(child: _buildQuickActions()),
 
-              // Acciones rápidas
-              GlassmorphismSection(
-                titulo: 'Acciones rápidas',
-                contenido: Column(
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _buildQuickAction(
-                              'Nuevo reto', '✨', const Color(0xFF22C55E), () {}),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: _buildQuickAction(
-                              'Ver stats', '📊', const Color(0xFF3B82F6), () {}),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _buildQuickAction('Tienda XP', '🏆',
-                              const Color(0xFFF97316), () {}),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: _buildQuickAction(
-                              'Amigos', '👥', const Color(0xFFA855F7), () {}),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-
-              const SizedBox(height: 80),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildEmptyHabits() {
-    return GlassmorphismCard(
-      padding: const EdgeInsets.all(24),
-      child: Column(
-        children: [
-          const Text('🌱', style: TextStyle(fontSize: 32)),
-          const SizedBox(height: 8),
-          const Text(
-            'No tienes hábitos todavía',
-            style: TextStyle(color: Colors.white70, fontSize: 14),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            'Crea uno desde la pestaña +',
-            style: TextStyle(color: Colors.grey[600], fontSize: 12),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildXpStat(String label, String value, String emoji) {
-    return Column(
-      children: [
-        Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: const Color(0xFF22C55E).withOpacity(0.12),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Text(emoji, style: const TextStyle(fontSize: 20)),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          value,
-          style: const TextStyle(
-              fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
-        ),
-        Text(label, style: TextStyle(fontSize: 12, color: Colors.grey[400])),
-      ],
-    );
-  }
-
-  Widget _buildHabitItem(Habit habit) {
-    final completed = habit.completadoHoy;
-    return GestureDetector(
-      onLongPress: () => _abrirDetalle(habit),
-      child: GlassmorphismCard(
-        onTap: () => _habitService.toggleCompletado(habit),
-        padding: const EdgeInsets.all(12),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: completed
-                    ? const Color(0xFF22C55E).withOpacity(0.14)
-                    : Colors.transparent,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Text(habit.emoji, style: const TextStyle(fontSize: 20)),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          habit.nombre,
-                          style: TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w500,
-                            color: completed ? Colors.grey[500] : Colors.white,
-                            decoration: completed
-                                ? TextDecoration.lineThrough
-                                : null,
-                          ),
-                        ),
-                      ),
-                      // Badge grupal
-                      if (habit.esGrupal)
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF3B82F6).withOpacity(0.2),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: const Icon(Icons.people,
-                              color: Color(0xFF3B82F6), size: 12),
-                        ),
-                    ],
-                  ),
-                  if (habit.rachaActual > 0)
-                    Text(
-                      '🔥 ${habit.rachaActual} días de racha',
-                      style: TextStyle(fontSize: 11, color: Colors.orange[300]),
-                    ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 8),
-            if (completed)
-              const Icon(Icons.check_circle_rounded,
-                  color: Color(0xFF22C55E), size: 24)
-            else
-              Container(
-                width: 24,
-                height: 24,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(color: Colors.grey[700]!),
-                ),
-              ),
+            const SliverToBoxAdapter(child: SizedBox(height: 100)),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildQuickAction(
-      String title, String emoji, Color color, VoidCallback onTap) {
-    return GlassmorphismCard(
-      onTap: onTap,
-      padding: const EdgeInsets.all(16),
-      child: Column(
+  // ─── Header ─────────────────────────────────────────────────────
+
+  Widget _buildHeader() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: color.withOpacity(0.12),
-              borderRadius: BorderRadius.circular(14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Saludo con shimmer mientras carga
+                AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 400),
+                  child: _isLoadingName
+                      ? _buildShimmerText()
+                      : Column(
+                          key: ValueKey(_userName),
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              _saludoSegunHora(),
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Colors.white.withValues(alpha: 0.5),
+                                letterSpacing: 0.5,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              _userName,
+                              style: const TextStyle(
+                                fontSize: 30,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                                height: 1.1,
+                              ),
+                            ),
+                          ],
+                        ),
+                ),
+                const SizedBox(height: 6),
+                // Fecha actual
+                Text(
+                  _fechaFormateada(),
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: Colors.white.withValues(alpha: 0.4),
+                  ),
+                ),
+              ],
             ),
-            child: Text(emoji, style: const TextStyle(fontSize: 24)),
           ),
-          const SizedBox(height: 8),
-          Text(
-            title,
-            style: const TextStyle(
-                fontSize: 13, fontWeight: FontWeight.w500, color: Colors.white),
-            textAlign: TextAlign.center,
+          const SizedBox(width: 12),
+          // Botón menú
+          GestureDetector(
+            onTap: () {
+              showGeneralDialog(
+                context: context,
+                barrierDismissible: false,
+                barrierColor: Colors.transparent,
+                pageBuilder: (_, __, ___) => const EpicPanel(),
+              );
+            },
+            child: Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.12)),
+              ),
+              child: const Icon(Icons.menu,
+                  color: Colors.white70, size: 20),
+            ),
           ),
         ],
       ),
     );
+  }
+
+  Widget _buildShimmerText() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          width: 80,
+          height: 14,
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(4),
+          ),
+        ),
+        const SizedBox(height: 6),
+        Container(
+          width: 160,
+          height: 28,
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(6),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ─── Stats ──────────────────────────────────────────────────────
+
+  Widget _buildStats() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(24, 20, 24, 0),
+      child: Row(
+        children: [
+          Expanded(
+            child: _buildStatCard(
+              emoji: '✅',
+              value: '$_completadosHoy/${_habitos.length}',
+              label: 'Completados hoy',
+              color: const Color(0xFF22C55E),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: _buildStatCard(
+              emoji: '🔥',
+              value: '$_mejorRacha',
+              label: 'Mejor racha',
+              color: const Color(0xFFF97316),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: _buildStatCard(
+              emoji: '📋',
+              value: '${_habitos.length}',
+              label: 'Hábitos',
+              color: const Color(0xFF3B82F6),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatCard({
+    required String emoji,
+    required String value,
+    required String label,
+    required Color color,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 10),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: color.withValues(alpha: 0.2)),
+      ),
+      child: Column(
+        children: [
+          Text(emoji, style: const TextStyle(fontSize: 22)),
+          const SizedBox(height: 6),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: color,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 10,
+              color: Colors.white.withValues(alpha: 0.5),
+            ),
+            textAlign: TextAlign.center,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ─── Barra de progreso del día ───────────────────────────────────
+
+  Widget _buildDayProgress() {
+    if (_habitos.isEmpty) return const SizedBox(height: 20);
+    final progreso =
+        _habitos.isEmpty ? 0.0 : _completadosHoy / _habitos.length;
+    final porcentaje = (progreso * 100).round();
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(24, 20, 24, 0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Progreso del día',
+                style: TextStyle(
+                  fontSize: 13,
+                  color: Colors.white.withValues(alpha: 0.6),
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              Text(
+                '$porcentaje%',
+                style: const TextStyle(
+                  fontSize: 13,
+                  color: Color(0xFF22C55E),
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: TweenAnimationBuilder<double>(
+              tween: Tween(begin: 0, end: progreso),
+              duration: const Duration(milliseconds: 800),
+              curve: Curves.easeOutCubic,
+              builder: (_, value, __) => LinearProgressIndicator(
+                value: value,
+                minHeight: 8,
+                backgroundColor: Colors.white.withValues(alpha: 0.08),
+                valueColor: AlwaysStoppedAnimation<Color>(
+                  progreso == 1.0
+                      ? const Color(0xFF22C55E)
+                      : const Color(0xFF22C55E).withValues(alpha: 0.7),
+                ),
+              ),
+            ),
+          ),
+          if (progreso == 1.0) ...[
+            const SizedBox(height: 8),
+            const Row(
+              children: [
+                Icon(Icons.celebration,
+                    color: Color(0xFF22C55E), size: 14),
+                SizedBox(width: 4),
+                Text(
+                  '¡Todos los hábitos completados!',
+                  style: TextStyle(
+                      color: Color(0xFF22C55E),
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600),
+                ),
+              ],
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  // ─── Chips de filtro ─────────────────────────────────────────────
+
+  Widget _buildFilterChips() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(24, 20, 0, 0),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        physics: const BouncingScrollPhysics(),
+        child: Row(
+          children: [
+            _buildChip(HabitFilter.todos, 'Todos', '🗂️'),
+            const SizedBox(width: 8),
+            _buildChip(HabitFilter.diario, 'Diarios', '📅'),
+            const SizedBox(width: 8),
+            _buildChip(HabitFilter.semanal, 'Semanales', '🗓️'),
+            const SizedBox(width: 8),
+            _buildChip(HabitFilter.mensual, 'Mensuales', '📆'),
+            const SizedBox(width: 24),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildChip(HabitFilter filtro, String label, String emoji) {
+    final isActive = _filtroActivo == filtro;
+    return GestureDetector(
+      onTap: () => setState(() => _filtroActivo = filtro),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 250),
+        curve: Curves.easeOutCubic,
+        padding:
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
+        decoration: BoxDecoration(
+          color: isActive
+              ? const Color(0xFF22C55E)
+              : Colors.white.withValues(alpha: 0.06),
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(
+            color: isActive
+                ? const Color(0xFF22C55E)
+                : Colors.white.withValues(alpha: 0.1),
+          ),
+          boxShadow: isActive
+              ? [
+                  BoxShadow(
+                    color: const Color(0xFF22C55E).withValues(alpha: 0.3),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
+                  )
+                ]
+              : null,
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(emoji, style: const TextStyle(fontSize: 13)),
+            const SizedBox(width: 6),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight:
+                    isActive ? FontWeight.bold : FontWeight.w500,
+                color: isActive
+                    ? Colors.white
+                    : Colors.white.withValues(alpha: 0.6),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ─── Lista de hábitos ────────────────────────────────────────────
+
+  Widget _buildHabitList() {
+    final habitos = _habitosFiltrados;
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
+      child: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 300),
+        switchInCurve: Curves.easeOut,
+        switchOutCurve: Curves.easeIn,
+        child: habitos.isEmpty
+            ? _buildEmptyState()
+            : Column(
+                key: ValueKey(_filtroActivo),
+                children: habitos.asMap().entries.map((entry) {
+                  return TweenAnimationBuilder<double>(
+                    key: ValueKey(entry.value.id),
+                    tween: Tween(begin: 0.0, end: 1.0),
+                    duration: Duration(
+                        milliseconds: 300 + entry.key * 60),
+                    curve: Curves.easeOutCubic,
+                    builder: (_, value, child) => Opacity(
+                      opacity: value,
+                      child: Transform.translate(
+                        offset: Offset(0, 20 * (1 - value)),
+                        child: child,
+                      ),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.only(bottom: 10),
+                      child: _buildHabitItem(entry.value),
+                    ),
+                  );
+                }).toList(),
+              ),
+      ),
+    );
+  }
+
+  Widget _buildEmptyState() {
+    String mensaje;
+    if (_filtroActivo == HabitFilter.diario) {
+      mensaje = 'No tienes hábitos diarios';
+    } else if (_filtroActivo == HabitFilter.semanal) {
+      mensaje = 'No tienes hábitos semanales';
+    } else if (_filtroActivo == HabitFilter.mensual) {
+      mensaje = 'No tienes hábitos mensuales';
+    } else {
+      mensaje = 'No tienes hábitos todavía';
+    }
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(28),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.04),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+      ),
+      child: Column(
+        children: [
+          const Text('🌱', style: TextStyle(fontSize: 36)),
+          const SizedBox(height: 10),
+          Text(
+            mensaje,
+            style: const TextStyle(color: Colors.white70, fontSize: 14),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Crea uno desde la pestaña +',
+            style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.3), fontSize: 12),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHabitItem(Habit habit) {
+    final completed = habit.completadoHoy;
+    final animando = _habitosAnimando.contains(habit.id);
+
+    return GestureDetector(
+      onLongPress: () => _abrirDetalle(habit),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOutCubic,
+        decoration: BoxDecoration(
+          color: completed
+              ? const Color(0xFF22C55E).withValues(alpha: 0.08)
+              : Colors.white.withValues(alpha: 0.05),
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(
+            color: completed
+                ? const Color(0xFF22C55E).withValues(alpha: 0.3)
+                : Colors.white.withValues(alpha: 0.1),
+            width: completed ? 1.5 : 1,
+          ),
+          boxShadow: completed
+              ? [
+                  BoxShadow(
+                    color: const Color(0xFF22C55E).withValues(alpha: 0.1),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
+                  )
+                ]
+              : null,
+        ),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            borderRadius: BorderRadius.circular(18),
+            onTap: () => _toggleHabito(habit),
+            splashColor:
+                const Color(0xFF22C55E).withValues(alpha: 0.1),
+            highlightColor:
+                const Color(0xFF22C55E).withValues(alpha: 0.05),
+            child: Padding(
+              padding: const EdgeInsets.all(14),
+              child: Row(
+                children: [
+                  // Emoji con fondo animado
+                  AnimatedContainer(
+                    duration: const Duration(milliseconds: 300),
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      color: completed
+                          ? const Color(0xFF22C55E).withValues(alpha: 0.15)
+                          : Colors.white.withValues(alpha: 0.06),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Center(
+                      child: Text(habit.emoji,
+                          style: const TextStyle(fontSize: 22)),
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  // Info
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(
+                              child: AnimatedDefaultTextStyle(
+                                duration:
+                                    const Duration(milliseconds: 300),
+                                style: TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w600,
+                                  color: completed
+                                      ? Colors.white.withValues(alpha: 0.4)
+                                      : Colors.white,
+                                  decoration: completed
+                                      ? TextDecoration.lineThrough
+                                      : TextDecoration.none,
+                                  decorationColor: Colors.white38,
+                                ),
+                                child: Text(habit.nombre),
+                              ),
+                            ),
+                            if (habit.esGrupal)
+                              Container(
+                                margin: const EdgeInsets.only(left: 6),
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF3B82F6)
+                                      .withValues(alpha: 0.15),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: const Icon(Icons.people,
+                                    color: Color(0xFF3B82F6), size: 11),
+                              ),
+                          ],
+                        ),
+                        const SizedBox(height: 3),
+                        Row(
+                          children: [
+                            // Frecuencia badge
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 7, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withValues(alpha: 0.06),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: Text(
+                                habit.frecuencia,
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  color:
+                                      Colors.white.withValues(alpha: 0.4),
+                                ),
+                              ),
+                            ),
+                            if (habit.rachaActual > 0) ...[
+                              const SizedBox(width: 6),
+                              Text(
+                                '🔥 ${habit.rachaActual}',
+                                style: TextStyle(
+                                    fontSize: 11,
+                                    color: Colors.orange[300]),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  // Checkbox animado
+                  AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 300),
+                    switchInCurve: Curves.elasticOut,
+                    child: animando
+                        ? const SizedBox(
+                            key: ValueKey('loading'),
+                            width: 28,
+                            height: 28,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Color(0xFF22C55E),
+                            ),
+                          )
+                        : completed
+                            ? const Icon(
+                                key: ValueKey('done'),
+                                Icons.check_circle_rounded,
+                                color: Color(0xFF22C55E),
+                                size: 28,
+                              )
+                            : Container(
+                                key: const ValueKey('empty'),
+                                width: 28,
+                                height: 28,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  border: Border.all(
+                                    color: Colors.white
+                                        .withValues(alpha: 0.2),
+                                    width: 2,
+                                  ),
+                                ),
+                              ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ─── Acciones rápidas ────────────────────────────────────────────
+
+  Widget _buildQuickActions() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Acciones rápidas',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: Colors.white.withValues(alpha: 0.8),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: _buildQuickAction(
+                    'Nuevo reto', '✨', const Color(0xFF22C55E), () {}),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _buildQuickAction(
+                    'Ver stats', '📊', const Color(0xFF3B82F6), () {}),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _buildQuickAction(
+                    'Amigos', '👥', const Color(0xFFA855F7), () {}),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildQuickAction(
+      String title, String emoji, Color color, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.07),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: color.withValues(alpha: 0.15)),
+        ),
+        child: Column(
+          children: [
+            Text(emoji, style: const TextStyle(fontSize: 22)),
+            const SizedBox(height: 6),
+            Text(
+              title,
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w500,
+                color: Colors.white.withValues(alpha: 0.7),
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ─── Helpers ─────────────────────────────────────────────────────
+
+  String _saludoSegunHora() {
+    final hora = DateTime.now().hour;
+    if (hora < 12) return 'Buenos días,';
+    if (hora < 19) return 'Buenas tardes,';
+    return 'Buenas noches,';
+  }
+
+  String _fechaFormateada() {
+    const dias = [
+      'Lunes', 'Martes', 'Miércoles', 'Jueves',
+      'Viernes', 'Sábado', 'Domingo'
+    ];
+    const meses = [
+      'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+      'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'
+    ];
+    final ahora = DateTime.now();
+    return '${dias[ahora.weekday - 1]}, ${ahora.day} de ${meses[ahora.month - 1]}';
   }
 }
