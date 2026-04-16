@@ -4,6 +4,7 @@ import 'package:app_habitcrew/Widgets/animated_background.dart';
 import 'package:app_habitcrew/Widgets/glassmorphism_card.dart';
 import 'package:app_habitcrew/servicios/friend_service.dart';
 import 'package:app_habitcrew/servicios/achievement_service.dart';
+import 'package:app_habitcrew/Screen/profile_theme_service.dart';
 
 class FriendProfileScreen extends StatefulWidget {
   final String friendUid;
@@ -27,6 +28,8 @@ class _FriendProfileScreenState extends State<FriendProfileScreen> {
   List<Map<String, dynamic>> _habitos = [];
   List<bool> _historialGlobal = List.filled(7, false);
   List<String> _insigniasEquipadas = [];
+  String? _bannerEquipado;
+  String? _avatarEquipado;
   bool _loading = true;
 
   @override
@@ -54,6 +57,8 @@ class _FriendProfileScreenState extends State<FriendProfileScreen> {
         _historialGlobal = historial;
         _insigniasEquipadas = List<String>.from(
             userData?['insigniasEquipadas'] ?? []);
+        _bannerEquipado = userData?['bannerEquipado'] as String?;
+        _avatarEquipado = userData?['avatarEquipado'] as String?;
         _loading = false;
       });
     }
@@ -124,29 +129,53 @@ class _FriendProfileScreenState extends State<FriendProfileScreen> {
               : SingleChildScrollView(
                   child: Column(
                     children: [
-                      // ── Banner ──────────────────────────────────
+                      // ── Banner dinámico del amigo ────────────────
                       Stack(
                         clipBehavior: Clip.none,
                         children: [
-                          Container(
-                            height: 140,
-                            width: double.infinity,
-                            decoration: const BoxDecoration(
-                              gradient: LinearGradient(
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                                colors: [
-                                  Color(0xFF3B82F6),
-                                  Color(0xFF1D4ED8),
-                                  Color(0xFF1E1B4B),
-                                ],
+                          Builder(builder: (_) {
+                            final bannerTheme = ProfileThemeService.getBanner(_bannerEquipado);
+                            final colors = bannerTheme?.gradientColors ??
+                                ProfileThemeService.defaultBanner.gradientColors;
+                            return Container(
+                              height: 140,
+                              width: double.infinity,
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                  colors: colors,
+                                ),
+                                borderRadius: const BorderRadius.only(
+                                  bottomLeft: Radius.circular(16),
+                                  bottomRight: Radius.circular(16),
+                                ),
                               ),
-                              borderRadius: BorderRadius.only(
-                                bottomLeft: Radius.circular(16),
-                                bottomRight: Radius.circular(16),
-                              ),
-                            ),
-                          ),
+                              child: _bannerEquipado == 'Beta'
+                                  ? Center(
+                                      child: Text(
+                                        'BETA',
+                                        style: TextStyle(
+                                          fontSize: 44,
+                                          fontWeight: FontWeight.w900,
+                                          color: Colors.white.withValues(alpha: 0.15),
+                                          letterSpacing: 14,
+                                        ),
+                                      ),
+                                    )
+                                  : _bannerEquipado != null
+                                  ? Center(
+                                      child: Opacity(
+                                        opacity: 0.3,
+                                        child: Text(
+                                          bannerTheme?.emoji ?? '',
+                                          style: const TextStyle(fontSize: 70),
+                                        ),
+                                      ),
+                                    )
+                                  : null,
+                            );
+                          }),
                           // Botón volver
                           Positioned(
                             top: 12,
@@ -164,7 +193,7 @@ class _FriendProfileScreenState extends State<FriendProfileScreen> {
                               ),
                             ),
                           ),
-                          // Avatar
+                          // Avatar dinámico del amigo
                           Positioned(
                             bottom: -45,
                             left: 20,
@@ -173,25 +202,41 @@ class _FriendProfileScreenState extends State<FriendProfileScreen> {
                               height: 90,
                               decoration: BoxDecoration(
                                 shape: BoxShape.circle,
-                                border:
-                                    Border.all(color: Colors.white, width: 3),
+                                border: Border.all(
+                                    color: Colors.white, width: 3),
                               ),
                               child: ClipOval(
-                                child: Container(
-                                  color: const Color(0xFF3B82F6),
-                                  child: Center(
-                                    child: Text(
-                                      widget.friendName.isNotEmpty
-                                          ? widget.friendName[0].toUpperCase()
-                                          : '?',
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 36,
-                                        fontWeight: FontWeight.bold,
+                                child: Builder(builder: (_) {
+                                  final avatarTheme = ProfileThemeService
+                                      .getAvatar(_avatarEquipado);
+                                  if (avatarTheme != null) {
+                                    return Container(
+                                      color: avatarTheme.backgroundColor,
+                                      child: Center(
+                                        child: Text(avatarTheme.emoji,
+                                            style: const TextStyle(
+                                                fontSize: 40)),
+                                      ),
+                                    );
+                                  }
+                                  return Container(
+                                    color: ProfileThemeService
+                                        .defaultAvatarColor,
+                                    child: Center(
+                                      child: Text(
+                                        widget.friendName.isNotEmpty
+                                            ? widget.friendName[0]
+                                                .toUpperCase()
+                                            : '?',
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 36,
+                                          fontWeight: FontWeight.bold,
+                                        ),
                                       ),
                                     ),
-                                  ),
-                                ),
+                                  );
+                                }),
                               ),
                             ),
                           ),

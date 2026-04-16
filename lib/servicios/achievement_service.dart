@@ -130,15 +130,52 @@ class AchievementService {
 
     try {
       final doc = await _firestore.collection('usuaris').doc(uid).get();
-      final desbloqueados = List<String>.from(
-          doc.data()?['logrosDesbloqueados'] ?? []);
+      final data = doc.data() ?? {};
+      final desbloqueados = List<String>.from(data['logrosDesbloqueados'] ?? []);
+      final itemsCofre = List<Map<String, dynamic>>.from(data['itemsCofre'] ?? []);
 
-      if (desbloqueados.contains('beta')) return;
+      final tieneBannerBeta = itemsCofre.any(
+          (i) => i['tipo'] == 'banner' && i['nombre'] == 'Beta');
+      final tieneAvatarBeta = itemsCofre.any(
+          (i) => i['tipo'] == 'avatar' && i['nombre'] == 'Beta');
 
-      await _firestore.collection('usuaris').doc(uid).set({
-        'logrosDesbloqueados': FieldValue.arrayUnion(['beta']),
-        'fechasLogros': {'beta': Timestamp.now()},
-      }, SetOptions(merge: true));
+      // Si ya tiene todo, no hacer nada
+      if (desbloqueados.contains('beta') && tieneBannerBeta && tieneAvatarBeta) return;
+
+      final updates = <String, dynamic>{};
+
+      if (!desbloqueados.contains('beta')) {
+        updates['logrosDesbloqueados'] = FieldValue.arrayUnion(['beta']);
+        updates['fechasLogros'] = {'beta': Timestamp.now()};
+      }
+
+      final itemsNuevos = <Map<String, dynamic>>[];
+      if (!tieneBannerBeta) {
+        itemsNuevos.add({
+          'tipo': 'banner',
+          'nombre': 'Beta',
+          'emoji': '🚀',
+          'fecha': Timestamp.now(),
+        });
+      }
+      if (!tieneAvatarBeta) {
+        itemsNuevos.add({
+          'tipo': 'avatar',
+          'nombre': 'Beta',
+          'emoji': 'β',
+          'fecha': Timestamp.now(),
+        });
+      }
+      if (itemsNuevos.isNotEmpty) {
+        updates['itemsCofre'] = FieldValue.arrayUnion(itemsNuevos);
+      }
+
+      if (updates.isNotEmpty) {
+        await _firestore.collection('usuaris').doc(uid).set(
+          updates,
+          SetOptions(merge: true),
+        );
+      }
     } catch (_) {}
   }
 
@@ -244,6 +281,38 @@ class AchievementService {
     await _firestore.collection('usuaris').doc(uid).update({
       'insigniasEquipadas': FieldValue.arrayRemove([logroId]),
     });
+  }
+
+  /// Equipa un banner en el perfil.
+  Future<void> equiparBanner(String nombre) async {
+    final uid = _uid;
+    if (uid == null) return;
+    await _firestore.collection('usuaris').doc(uid).set(
+      {'bannerEquipado': nombre}, SetOptions(merge: true));
+  }
+
+  /// Desequipa el banner.
+  Future<void> desequiparBanner() async {
+    final uid = _uid;
+    if (uid == null) return;
+    await _firestore.collection('usuaris').doc(uid).update(
+      {'bannerEquipado': null});
+  }
+
+  /// Equipa un avatar en el perfil.
+  Future<void> equiparAvatar(String nombre) async {
+    final uid = _uid;
+    if (uid == null) return;
+    await _firestore.collection('usuaris').doc(uid).set(
+      {'avatarEquipado': nombre}, SetOptions(merge: true));
+  }
+
+  /// Desequipa el avatar.
+  Future<void> desequiparAvatar() async {
+    final uid = _uid;
+    if (uid == null) return;
+    await _firestore.collection('usuaris').doc(uid).update(
+      {'avatarEquipado': null});
   }
 
   /// Stream de datos del usuario para actualizar insignias en tiempo real.

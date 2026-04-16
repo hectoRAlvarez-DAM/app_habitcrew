@@ -7,13 +7,13 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../servicios/servei_auth.dart';
 import '../servicios/habit_service.dart';
 import '../servicios/achievement_service.dart';
+import '../servicios/quest_service.dart';
 import 'models/habit.dart';
 import 'login_screen.dart';
 import 'habit_detail_screen.dart';
 import 'epic_panel.dart';
 
-// ─── Filtros disponibles ────────────────────────────────────────────
-enum HabitFilter { todos, diario, semanal, mensual }
+enum HabitFilter { diario, semanal, mensual }
 
 class Home extends StatefulWidget {
   const Home({super.key});
@@ -30,7 +30,14 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
   List<Habit> _habitos = [];
   StreamSubscription<List<Habit>>? _habitSub;
 
-  HabitFilter _filtroActivo = HabitFilter.todos;
+  HabitFilter _filtroActivo = HabitFilter.diario;
+
+  // Quest state
+  final QuestService _questService = QuestService();
+  List<DailyQuest> _misiones = [];
+  List<int> _progresosQuests = [0, 0, 0];
+  List<String> _cofresReclamados = [];
+  bool _loadingQuests = true;
 
   // Controlador de animación para la entrada del contenido
   late AnimationController _fadeController;
@@ -55,12 +62,14 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
     _cargarNombreUsuario();
     _habitService.crearHabitosDefecto();
     AchievementService().asignarInsigniaBeta();
+    _misiones = _questService.obtenerMisionesDelDia();
 
     _habitSub = _habitService.obtenerHabitos().listen(
       (habitos) {
         if (mounted) {
           setState(() => _habitos = habitos);
           if (!_fadeController.isCompleted) _fadeController.forward();
+          _actualizarProgresosQuests(habitos);
         }
       },
       onError: (e) => debugPrint('Error stream hábitos: $e'),
@@ -131,6 +140,152 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
     );
   }
 
+  Future<void> _actualizarProgresosQuests(List<Habit> habitos) async {
+    final habitosMap = habitos
+        .map((h) => {
+              'frecuencia': h.frecuencia,
+              'fechaUltimoCompletado': h.fechaUltimoCompletado != null
+                  ? Timestamp.fromDate(h.fechaUltimoCompletado!)
+                  : null,
+              'rachaActual': h.rachaActual,
+              'esGrupal': h.esGrupal,
+            })
+        .toList();
+
+    final estado = await _questService.obtenerEstadoMisiones();
+    final progresos = await Future.wait(
+      _misiones.map((q) => _questService.calcularProgreso(q, habitosMap)),
+    );
+
+    if (mounted) {
+      setState(() {
+        _progresosQuests = progresos;
+        _cofresReclamados =
+            List<String>.from(estado['cofresReclamados'] ?? []);
+        _loadingQuests = false;
+      });
+    }
+  }
+
+  Future<void> _abrirCofre(DailyQuest quest, int index) async {
+    final reward = await _questService.abrirCofre(quest.id);
+    if (reward == null || !mounted) return;
+
+    setState(() => _cofresReclamados.add(quest.id));
+    _mostrarRecompensa(reward);
+  }
+
+  void _mostrarRecompensa(ChestReward reward) {
+    String titulo;
+    String subtitulo;
+    String emoji;
+    Color color;
+
+    if (reward.type == RewardType.monedasSmall ||
+        reward.type == RewardType.monedasBig) {
+      titulo = '¡${reward.monedas} monedas!';
+      subtitulo = 'Añadidas a tu cuenta';
+      emoji = '🪙';
+      color = const Color(0xFFFFD700);
+    } else if (reward.type == RewardType.banner) {
+      titulo = '¡Banner exclusivo!';
+      subtitulo = reward.itemName ?? '';
+      emoji = reward.itemEmoji ?? '🖼️';
+      color = const Color(0xFF3B82F6);
+    } else {
+      titulo = '¡Avatar exclusivo!';
+      subtitulo = reward.itemName ?? '';
+      emoji = reward.itemEmoji ?? '🎭';
+      color = const Color(0xFFA855F7);
+    }
+
+    showDialog(
+      context: context,
+      builder: (ctx) => Dialog(
+        backgroundColor: Colors.transparent,
+        child: Container(
+          padding: const EdgeInsets.all(28),
+          decoration: BoxDecoration(
+            color: const Color(0xFF0F1923),
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(color: color.withValues(alpha: 0.4)),
+            boxShadow: [
+              BoxShadow(
+                  color: color.withValues(alpha: 0.2),
+                  blurRadius: 30,
+                  spreadRadius: 2),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Emoji animado
+              TweenAnimationBuilder<double>(
+                tween: Tween(begin: 0.5, end: 1.0),
+                duration: const Duration(milliseconds: 500),
+                curve: Curves.elasticOut,
+                builder: (_, scale, child) =>
+                    Transform.scale(scale: scale, child: child),
+                child: Text(emoji,
+                    style: const TextStyle(fontSize: 64)),
+              ),
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 12, vertical: 5),
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: color.withValues(alpha: 0.3)),
+                ),
+                child: const Text(
+                  '¡Cofre abierto!',
+                  style: TextStyle(
+                      color: Colors.white70,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                titulo,
+                style: TextStyle(
+                  color: color,
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 4),
+              Text(
+                subtitulo,
+                style: const TextStyle(color: Colors.white54, fontSize: 13),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: color,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                  ),
+                  child: const Text('¡Genial!',
+                      style: TextStyle(
+                          fontWeight: FontWeight.bold, fontSize: 15)),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   void _abrirDetalle(Habit habit) {
     Navigator.push(
       context,
@@ -164,11 +319,7 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
   // ─── Filtrado ────────────────────────────────────────────────────
 
   List<Habit> get _habitosFiltrados {
-    if (_filtroActivo == HabitFilter.diario) {
-      return _habitos
-          .where((h) => h.frecuencia.toLowerCase() == 'diario')
-          .toList();
-    } else if (_filtroActivo == HabitFilter.semanal) {
+    if (_filtroActivo == HabitFilter.semanal) {
       return _habitos
           .where((h) => h.frecuencia.toLowerCase() == 'semanal')
           .toList();
@@ -177,7 +328,9 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
           .where((h) => h.frecuencia.toLowerCase() == 'mensual')
           .toList();
     }
-    return List.from(_habitos);
+    return _habitos
+        .where((h) => h.frecuencia.toLowerCase() == 'diario')
+        .toList();
   }
 
   int get _mejorRacha => _habitos.isEmpty
@@ -210,8 +363,8 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
             // ── Lista de hábitos ─────────────────────────────────
             SliverToBoxAdapter(child: _buildHabitList()),
 
-            // ── Acciones rápidas ─────────────────────────────────
-            SliverToBoxAdapter(child: _buildQuickActions()),
+            // ── Misiones diarias ─────────────────────────────────
+            SliverToBoxAdapter(child: _buildMisionesSection()),
 
             const SliverToBoxAdapter(child: SizedBox(height: 100)),
           ],
@@ -493,8 +646,6 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
         physics: const BouncingScrollPhysics(),
         child: Row(
           children: [
-            _buildChip(HabitFilter.todos, 'Todos', '🗂️'),
-            const SizedBox(width: 8),
             _buildChip(HabitFilter.diario, 'Diarios', '📅'),
             const SizedBox(width: 8),
             _buildChip(HabitFilter.semanal, 'Semanales', '🗓️'),
@@ -600,14 +751,12 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
 
   Widget _buildEmptyState() {
     String mensaje;
-    if (_filtroActivo == HabitFilter.diario) {
-      mensaje = 'No tienes hábitos diarios';
-    } else if (_filtroActivo == HabitFilter.semanal) {
+    if (_filtroActivo == HabitFilter.semanal) {
       mensaje = 'No tienes hábitos semanales';
     } else if (_filtroActivo == HabitFilter.mensual) {
       mensaje = 'No tienes hábitos mensuales';
     } else {
-      mensaje = 'No tienes hábitos todavía';
+      mensaje = 'No tienes hábitos diarios';
     }
 
     return Container(
@@ -816,72 +965,276 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
     );
   }
 
-  // ─── Acciones rápidas ────────────────────────────────────────────
+  // ─── Misiones diarias ────────────────────────────────────────────
 
-  Widget _buildQuickActions() {
+  Widget _buildMisionesSection() {
     return Padding(
       padding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Acciones rápidas',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-              color: Colors.white.withValues(alpha: 0.8),
-            ),
-          ),
-          const SizedBox(height: 12),
           Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Expanded(
-                child: _buildQuickAction(
-                    'Nuevo reto', '✨', const Color(0xFF22C55E), () {}),
+              Row(
+                children: [
+                  const Text('⚔️', style: TextStyle(fontSize: 18)),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Misiones del día',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white.withValues(alpha: 0.9),
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: _buildQuickAction(
-                    'Ver stats', '📊', const Color(0xFF3B82F6), () {}),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: _buildQuickAction(
-                    'Amigos', '👥', const Color(0xFFA855F7), () {}),
-              ),
+              // Contador de cofres disponibles
+              Builder(builder: (_) {
+                final disponibles = _misiones.where((q) {
+                  final idx = _misiones.indexOf(q);
+                  final completada =
+                      _progresosQuests.length > idx &&
+                          _progresosQuests[idx] >= q.targetValue;
+                  final reclamada = _cofresReclamados.contains(q.id);
+                  return completada && !reclamada;
+                }).length;
+                if (disponibles == 0) return const SizedBox();
+                return Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFFD700).withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                        color:
+                            const Color(0xFFFFD700).withValues(alpha: 0.4)),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Text('📦',
+                          style: TextStyle(fontSize: 12)),
+                      const SizedBox(width: 4),
+                      Text(
+                        '$disponibles cofre${disponibles > 1 ? 's' : ''}',
+                        style: const TextStyle(
+                          color: Color(0xFFFFD700),
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }),
             ],
           ),
+          const SizedBox(height: 12),
+          _loadingQuests
+              ? const Center(
+                  child: Padding(
+                  padding: EdgeInsets.all(20),
+                  child: CircularProgressIndicator(
+                      color: Color(0xFF22C55E), strokeWidth: 2),
+                ))
+              : Column(
+                  children: _misiones.asMap().entries.map((entry) {
+                    final idx = entry.key;
+                    final quest = entry.value;
+                    final progreso = _progresosQuests.length > idx
+                        ? _progresosQuests[idx]
+                        : 0;
+                    final completada = progreso >= quest.targetValue;
+                    final reclamada = _cofresReclamados.contains(quest.id);
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 10),
+                      child: _buildQuestCard(
+                        quest: quest,
+                        progreso: progreso,
+                        completada: completada,
+                        reclamada: reclamada,
+                        index: idx,
+                      ),
+                    );
+                  }).toList(),
+                ),
         ],
       ),
     );
   }
 
-  Widget _buildQuickAction(
-      String title, String emoji, Color color, VoidCallback onTap) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 16),
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.07),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: color.withValues(alpha: 0.15)),
+  Widget _buildQuestCard({
+    required DailyQuest quest,
+    required int progreso,
+    required bool completada,
+    required bool reclamada,
+    required int index,
+  }) {
+    final color = reclamada
+        ? Colors.white.withValues(alpha: 0.3)
+        : completada
+            ? const Color(0xFFFFD700)
+            : const Color(0xFF22C55E);
+
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 400),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: reclamada
+            ? Colors.white.withValues(alpha: 0.03)
+            : completada
+                ? const Color(0xFFFFD700).withValues(alpha: 0.06)
+                : Colors.white.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: reclamada
+              ? Colors.white.withValues(alpha: 0.06)
+              : completada
+                  ? const Color(0xFFFFD700).withValues(alpha: 0.3)
+                  : Colors.white.withValues(alpha: 0.08),
         ),
-        child: Column(
-          children: [
-            Text(emoji, style: const TextStyle(fontSize: 22)),
-            const SizedBox(height: 6),
-            Text(
-              title,
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w500,
-                color: Colors.white.withValues(alpha: 0.7),
-              ),
-              textAlign: TextAlign.center,
+      ),
+      child: Row(
+        children: [
+          // Emoji
+          Text(quest.emoji, style: const TextStyle(fontSize: 26)),
+          const SizedBox(width: 12),
+          // Info + barra
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        quest.title,
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                          color: reclamada
+                              ? Colors.white38
+                              : Colors.white,
+                          decoration: reclamada
+                              ? TextDecoration.lineThrough
+                              : null,
+                          decorationColor: Colors.white38,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  quest.description,
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: Colors.white.withValues(alpha: 0.4),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                // Barra de progreso
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(4),
+                  child: TweenAnimationBuilder<double>(
+                    tween: Tween(
+                      begin: 0,
+                      end: (progreso / quest.targetValue).clamp(0.0, 1.0),
+                    ),
+                    duration: const Duration(milliseconds: 600),
+                    curve: Curves.easeOutCubic,
+                    builder: (_, val, __) => LinearProgressIndicator(
+                      value: val,
+                      minHeight: 5,
+                      backgroundColor:
+                          Colors.white.withValues(alpha: 0.08),
+                      valueColor:
+                          AlwaysStoppedAnimation<Color>(color),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  '$progreso / ${quest.targetValue}',
+                  style: TextStyle(
+                    fontSize: 10,
+                    color: color.withValues(alpha: 0.8),
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
             ),
-          ],
-        ),
+          ),
+          const SizedBox(width: 12),
+          // Cofre
+          if (reclamada)
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.04),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Center(
+                child: Text('✅', style: TextStyle(fontSize: 18)),
+              ),
+            )
+          else if (completada)
+            GestureDetector(
+              onTap: () => _abrirCofre(quest, index),
+              child: TweenAnimationBuilder<double>(
+                tween: Tween(begin: 0.8, end: 1.0),
+                duration: const Duration(milliseconds: 800),
+                curve: Curves.elasticOut,
+                builder: (_, scale, child) =>
+                    Transform.scale(scale: scale, child: child),
+                child: Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFFFFD700), Color(0xFFFFA500)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFFFFD700)
+                            .withValues(alpha: 0.4),
+                        blurRadius: 12,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: const Center(
+                    child: Text('📦', style: TextStyle(fontSize: 20)),
+                  ),
+                ),
+              ),
+            )
+          else
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.04),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.08)),
+              ),
+              child: Center(
+                child: Text(
+                  '🔒',
+                  style: TextStyle(
+                      fontSize: 18,
+                      color: Colors.white.withValues(alpha: 0.3)),
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }

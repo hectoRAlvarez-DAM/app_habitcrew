@@ -5,6 +5,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../servicios/habit_service.dart';
 import '../servicios/achievement_service.dart';
+import 'package:app_habitcrew/Screen/profile_theme_service.dart';
 import 'models/habit.dart';
 
 class Profile extends StatefulWidget {
@@ -25,6 +26,11 @@ class _ProfileState extends State<Profile> {
   List<String> _logrosDesbloqueados = [];
   StreamSubscription? _userSub;
 
+  // Items del cofre y equipados
+  List<Map<String, dynamic>> _itemsCofre = [];
+  String? _bannerEquipado;
+  String? _avatarEquipado;
+
   final HabitService _habitService = HabitService();
   List<Habit> _habitos = [];
   StreamSubscription<List<Habit>>? _habitSub;
@@ -40,7 +46,7 @@ class _ProfileState extends State<Profile> {
       onError: (e) => debugPrint('Error stream hábitos perfil: $e'),
       cancelOnError: false,
     );
-    // Stream para insignias en tiempo real
+    // Stream para insignias, banner y avatar en tiempo real
     _userSub = _achievementService.streamUsuario().listen((doc) {
       if (!mounted) return;
       final data = doc.data() as Map<String, dynamic>?;
@@ -48,6 +54,9 @@ class _ProfileState extends State<Profile> {
       setState(() {
         _insigniasEquipadas = List<String>.from(data['insigniasEquipadas'] ?? []);
         _logrosDesbloqueados = List<String>.from(data['logrosDesbloqueados'] ?? []);
+        _itemsCofre = List<Map<String, dynamic>>.from(data['itemsCofre'] ?? []);
+        _bannerEquipado = data['bannerEquipado'] as String?;
+        _avatarEquipado = data['avatarEquipado'] as String?;
       });
     });
   }
@@ -132,78 +141,103 @@ class _ProfileState extends State<Profile> {
         child: SingleChildScrollView(
           child: Column(
             children: [
-              // Banner estilo Discord
+              // Banner dinámico
               Stack(
                 clipBehavior: Clip.none,
                 children: [
-                  Container(
-                    height: 150,
-                    width: double.infinity,
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [
-                          const Color(0xFF5865F2),
-                          const Color(0xFF404EED),
-                          const Color(0xFF23272A),
-                        ],
-                        stops: const [0.0, 0.4, 1.0],
-                      ),
-                      borderRadius: const BorderRadius.only(
-                        bottomLeft: Radius.circular(16),
-                        bottomRight: Radius.circular(16),
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.3),
-                          blurRadius: 10,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
-                    ),
-                    child: Stack(
-                      children: [
-                        Positioned.fill(
-                          child: CustomPaint(
-                            painter: DiscordPatternPainter(),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Positioned(
-                    bottom: -50,
-                    left: 20,
-                    child: Container(
-                      width: 100,
-                      height: 100,
+                  GestureDetector(
+                    onTap: () => _mostrarSelectorBanner(),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 500),
+                      height: 150,
+                      width: double.infinity,
                       decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(color: Colors.white, width: 4),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.3),
-                            blurRadius: 10,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: _getBannerColors(),
+                        ),
+                        borderRadius: const BorderRadius.only(
+                          bottomLeft: Radius.circular(16),
+                          bottomRight: Radius.circular(16),
+                        ),
                       ),
-                      child: ClipOval(
-                        child: Container(
-                          color: const Color(0xFF5865F2),
-                          child: Center(
-                            child: Text(
-                              _userName.isNotEmpty
-                                  ? _userName[0].toUpperCase()
-                                  : '?',
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 40,
-                                fontWeight: FontWeight.bold,
+                      child: Stack(
+                        children: [
+                          Positioned.fill(
+                            child: CustomPaint(
+                                painter: DiscordPatternPainter()),
+                          ),
+                          // Contenido del banner
+                          if (_bannerEquipado == 'Beta')
+                            Center(
+                              child: Text(
+                                'BETA',
+                                style: TextStyle(
+                                  fontSize: 48,
+                                  fontWeight: FontWeight.w900,
+                                  color: Colors.white.withValues(alpha: 0.15),
+                                  letterSpacing: 16,
+                                ),
+                              ),
+                            )
+                          else if (_bannerEquipado != null)
+                            Center(
+                              child: Opacity(
+                                opacity: 0.3,
+                                child: Text(
+                                  ProfileThemeService.getBanner(_bannerEquipado)?.emoji ?? '',
+                                  style: const TextStyle(fontSize: 80),
+                                ),
+                              ),
+                            ),
+                          // Botón de cambiar banner
+                          Positioned(
+                            top: 12,
+                            right: 12,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 10, vertical: 5),
+                              decoration: BoxDecoration(
+                                color: Colors.black.withValues(alpha: 0.4),
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: const Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.edit, color: Colors.white70, size: 12),
+                                  SizedBox(width: 4),
+                                  Text('Banner', style: TextStyle(color: Colors.white70, fontSize: 11)),
+                                ],
                               ),
                             ),
                           ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  // Avatar
+                  Positioned(
+                    bottom: -50,
+                    left: 20,
+                    child: GestureDetector(
+                      onTap: () => _mostrarSelectorAvatar(),
+                      child: Container(
+                        width: 100,
+                        height: 100,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.white, width: 4),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.3),
+                              blurRadius: 10,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: ClipOval(
+                          child: _buildAvatarContent(size: 100),
                         ),
                       ),
                     ),
@@ -454,6 +488,218 @@ class _ProfileState extends State<Profile> {
     );
   }
 
+  // ─── Helpers visuales ───────────────────────────────────────────
+
+  List<Color> _getBannerColors() {
+    final theme = ProfileThemeService.getBanner(_bannerEquipado);
+    return theme?.gradientColors ??
+        ProfileThemeService.defaultBanner.gradientColors;
+  }
+
+  Widget _buildAvatarContent({required double size}) {
+    final avatarTheme = ProfileThemeService.getAvatar(_avatarEquipado);
+    if (avatarTheme != null) {
+      return Container(
+        color: avatarTheme.backgroundColor,
+        child: Center(
+          child: _avatarEquipado == 'Beta'
+              ? Text(
+                  'β',
+                  style: TextStyle(
+                    fontSize: size * 0.42,
+                    fontWeight: FontWeight.w900,
+                    color: Colors.white,
+                    letterSpacing: -2,
+                  ),
+                )
+              : Text(avatarTheme.emoji,
+                  style: TextStyle(fontSize: size * 0.45)),
+        ),
+      );
+    }
+    return Container(
+      color: ProfileThemeService.defaultAvatarColor,
+      child: Center(
+        child: Text(
+          _userName.isNotEmpty ? _userName[0].toUpperCase() : '?',
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: size * 0.4,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _mostrarSelectorBanner() {
+    // Combinar banners del cofre + default
+    final disponibles = [
+      null, // Default
+      ..._itemsCofre
+          .where((i) => i['tipo'] == 'banner')
+          .map((i) => i['nombre'] as String?),
+    ];
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF1E1E2E),
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (ctx) => Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Elige tu banner',
+                style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold)),
+            const SizedBox(height: 16),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: disponibles.map((nombre) {
+                final theme = nombre != null
+                    ? ProfileThemeService.getBanner(nombre)
+                    : ProfileThemeService.defaultBanner;
+                final isEquipado = _bannerEquipado == nombre;
+                return GestureDetector(
+                  onTap: () async {
+                    Navigator.pop(ctx);
+                    if (nombre == null) {
+                      await _achievementService.desequiparBanner();
+                    } else {
+                      await _achievementService.equiparBanner(nombre);
+                    }
+                  },
+                  child: Container(
+                    width: 100,
+                    height: 60,
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: theme?.gradientColors ??
+                            [Colors.grey.shade800],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                        color: isEquipado
+                            ? const Color(0xFF22C55E)
+                            : Colors.transparent,
+                        width: 2,
+                      ),
+                    ),
+                    child: Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (theme?.emoji.isNotEmpty == true)
+                            Text(theme!.emoji,
+                                style: const TextStyle(fontSize: 18)),
+                          Text(
+                            nombre ?? 'Default',
+                            style: const TextStyle(
+                                color: Colors.white70, fontSize: 9),
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+            const SizedBox(height: 20),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _mostrarSelectorAvatar() {
+    final disponibles = [
+      null, // Default (inicial)
+      ..._itemsCofre
+          .where((i) => i['tipo'] == 'avatar')
+          .map((i) => i['nombre'] as String?),
+    ];
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF1E1E2E),
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (ctx) => Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Elige tu avatar',
+                style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold)),
+            const SizedBox(height: 16),
+            Wrap(
+              spacing: 12,
+              runSpacing: 12,
+              children: disponibles.map((nombre) {
+                final theme = nombre != null
+                    ? ProfileThemeService.getAvatar(nombre)
+                    : null;
+                final isEquipado = _avatarEquipado == nombre;
+                return GestureDetector(
+                  onTap: () async {
+                    Navigator.pop(ctx);
+                    if (nombre == null) {
+                      await _achievementService.desequiparAvatar();
+                    } else {
+                      await _achievementService.equiparAvatar(nombre);
+                    }
+                  },
+                  child: Container(
+                    width: 64,
+                    height: 64,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: theme?.backgroundColor ??
+                          ProfileThemeService.defaultAvatarColor,
+                      border: Border.all(
+                        color: isEquipado
+                            ? const Color(0xFF22C55E)
+                            : Colors.transparent,
+                        width: 3,
+                      ),
+                    ),
+                    child: Center(
+                      child: theme != null
+                          ? Text(theme.emoji,
+                              style: const TextStyle(fontSize: 28))
+                          : Text(
+                              _userName.isNotEmpty
+                                  ? _userName[0].toUpperCase()
+                                  : '?',
+                              style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 26,
+                                  fontWeight: FontWeight.bold)),
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+            const SizedBox(height: 20),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildInsigniaChip(dynamic def) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
@@ -570,26 +816,6 @@ class _ProfileState extends State<Profile> {
             ],
           ),
         ),
-      ),
-    );
-  }
-
-  Widget _buildBadge(IconData icon, String label, Color color) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: const Color(0xFF2B2D31),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, color: color, size: 14),
-          const SizedBox(width: 4),
-          Text(label,
-              style: const TextStyle(color: Colors.white, fontSize: 12)),
-        ],
       ),
     );
   }
