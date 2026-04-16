@@ -333,11 +333,20 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
         .toList();
   }
 
-  int get _mejorRacha => _habitos.isEmpty
+  int get _mejorRacha => _habitosFiltrados.isEmpty
       ? 0
-      : _habitos.map((h) => h.rachaActual).reduce((a, b) => a > b ? a : b);
+      : _habitosFiltrados
+          .map((h) => h.rachaActual)
+          .reduce((a, b) => a > b ? a : b);
 
-  int get _completadosHoy => _habitos.where((h) => h.completadoHoy).length;
+  int get _completadosHoy =>
+      _habitosFiltrados.where((h) => h.completadoHoy).length;
+
+  String get _labelCompletados {
+    if (_filtroActivo == HabitFilter.semanal) return 'Esta semana';
+    if (_filtroActivo == HabitFilter.mensual) return 'Este mes';
+    return 'Completados hoy';
+  }
 
   // ─── Build ───────────────────────────────────────────────────────
 
@@ -485,6 +494,7 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
   // ─── Stats ──────────────────────────────────────────────────────
 
   Widget _buildStats() {
+    final filtrados = _habitosFiltrados;
     return Padding(
       padding: const EdgeInsets.fromLTRB(24, 20, 24, 0),
       child: Row(
@@ -492,8 +502,8 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
           Expanded(
             child: _buildStatCard(
               emoji: '✅',
-              value: '$_completadosHoy/${_habitos.length}',
-              label: 'Completados hoy',
+              value: '$_completadosHoy/${filtrados.length}',
+              label: _labelCompletados,
               color: const Color(0xFF22C55E),
             ),
           ),
@@ -510,7 +520,7 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
           Expanded(
             child: _buildStatCard(
               emoji: '📋',
-              value: '${_habitos.length}',
+              value: '${filtrados.length}',
               label: 'Hábitos',
               color: const Color(0xFF3B82F6),
             ),
@@ -564,9 +574,9 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
   // ─── Barra de progreso del día ───────────────────────────────────
 
   Widget _buildDayProgress() {
-    if (_habitos.isEmpty) return const SizedBox(height: 20);
-    final progreso =
-        _habitos.isEmpty ? 0.0 : _completadosHoy / _habitos.length;
+    final filtrados = _habitosFiltrados;
+    if (filtrados.isEmpty) return const SizedBox(height: 20);
+    final progreso = _completadosHoy / filtrados.length;
     final porcentaje = (progreso * 100).round();
 
     return Padding(
