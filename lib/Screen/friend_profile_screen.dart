@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:app_habitcrew/Widgets/animated_background.dart';
@@ -30,6 +31,7 @@ class _FriendProfileScreenState extends State<FriendProfileScreen> {
   List<String> _insigniasEquipadas = [];
   String? _bannerEquipado;
   String? _avatarEquipado;
+  String? _fotoPerfil;
   bool _loading = true;
 
   @override
@@ -59,6 +61,7 @@ class _FriendProfileScreenState extends State<FriendProfileScreen> {
             userData?['insigniasEquipadas'] ?? []);
         _bannerEquipado = userData?['bannerEquipado'] as String?;
         _avatarEquipado = userData?['avatarEquipado'] as String?;
+        _fotoPerfil = userData?['fotoPerfil'] as String?;
         _loading = false;
       });
     }
@@ -206,37 +209,9 @@ class _FriendProfileScreenState extends State<FriendProfileScreen> {
                                     color: Colors.white, width: 3),
                               ),
                               child: ClipOval(
-                                child: Builder(builder: (_) {
-                                  final avatarTheme = ProfileThemeService
-                                      .getAvatar(_avatarEquipado);
-                                  if (avatarTheme != null) {
-                                    return Container(
-                                      color: avatarTheme.backgroundColor,
-                                      child: Center(
-                                        child: Text(avatarTheme.emoji,
-                                            style: const TextStyle(
-                                                fontSize: 40)),
-                                      ),
-                                    );
-                                  }
-                                  return Container(
-                                    color: ProfileThemeService
-                                        .defaultAvatarColor,
-                                    child: Center(
-                                      child: Text(
-                                        widget.friendName.isNotEmpty
-                                            ? widget.friendName[0]
-                                                .toUpperCase()
-                                            : '?',
-                                        style: const TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 36,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                    ),
-                                  );
-                                }),
+                                child: _fotoPerfil != null
+                                    ? _buildFotoWidget(_fotoPerfil!)
+                                    : _buildFriendAvatarFallback(),
                               ),
                             ),
                           ),
@@ -552,6 +527,57 @@ class _FriendProfileScreenState extends State<FriendProfileScreen> {
             ],
           );
         }),
+      ),
+    );
+  }
+
+  Widget _buildFotoWidget(String foto) {
+    try {
+      if (foto.startsWith('data:image')) {
+        final base64Data = foto.split(',').last;
+        return Image.memory(
+          base64Decode(base64Data),
+          fit: BoxFit.cover,
+          errorBuilder: (_, __, ___) => _buildFriendAvatarFallback(),
+        );
+      }
+      return Image.network(foto, fit: BoxFit.cover,
+          errorBuilder: (_, __, ___) => _buildFriendAvatarFallback());
+    } catch (_) {
+      return _buildFriendAvatarFallback();
+    }
+  }
+
+  Widget _buildFriendAvatarFallback() {
+    final avatarTheme = ProfileThemeService.getAvatar(_avatarEquipado);
+    if (avatarTheme != null) {
+      return Container(
+        color: avatarTheme.backgroundColor,
+        child: Center(
+          child: _avatarEquipado == 'Beta'
+              ? const Text('β',
+                  style: TextStyle(
+                      fontSize: 36,
+                      fontWeight: FontWeight.w900,
+                      color: Colors.white))
+              : Text(avatarTheme.emoji,
+                  style: const TextStyle(fontSize: 40)),
+        ),
+      );
+    }
+    return Container(
+      color: ProfileThemeService.defaultAvatarColor,
+      child: Center(
+        child: Text(
+          widget.friendName.isNotEmpty
+              ? widget.friendName[0].toUpperCase()
+              : '?',
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 36,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
       ),
     );
   }
