@@ -161,6 +161,92 @@ class _LoginScreenState extends State<LoginScreen>
     setState(() => _isLoginMode = !_isLoginMode);
   }
 
+  void _mostrarDialogRecuperarContrasenya() {
+    final emailController = TextEditingController(
+      text: _emailController.text.trim(),
+    );
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1E1E1E),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text(
+          '¿Olvidaste tu contraseña?',
+          style: TextStyle(color: Colors.white, fontSize: 18),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'Introduce tu correo y te enviaremos un enlace para restablecer tu contraseña.',
+              style: TextStyle(color: Colors.white70, fontSize: 13),
+            ),
+            const SizedBox(height: 16),
+            Container(
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.08),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.white.withOpacity(0.15)),
+              ),
+              child: TextField(
+                controller: emailController,
+                keyboardType: TextInputType.emailAddress,
+                style: const TextStyle(color: Colors.white),
+                decoration: const InputDecoration(
+                  hintText: 'tucorreo@ejemplo.com',
+                  hintStyle: TextStyle(color: Colors.white38),
+                  prefixIcon: Icon(Icons.email, color: Color(0xFF58CC02)),
+                  border: InputBorder.none,
+                  contentPadding:
+                      EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                ),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child:
+                const Text('Cancelar', style: TextStyle(color: Colors.grey)),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              final email = emailController.text.trim();
+              if (email.isEmpty) return;
+              Navigator.pop(ctx);
+              final error = await ServeiAuth().recuperarContrasenya(email);
+              if (!mounted) return;
+              if (error == null) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text(
+                        '📧 Correo enviado. Revisa tu bandeja de entrada.'),
+                    backgroundColor: Color(0xFF58CC02),
+                  ),
+                );
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(error),
+                    backgroundColor: Colors.red,
+                  ),
+                );
+              }
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF58CC02),
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10)),
+            ),
+            child: const Text('Enviar correo'),
+          ),
+        ],
+      ),
+    );
+  }
+
   // Crear una sola onda grande al tocar
   void _createWave(Offset position) {
     setState(() {
@@ -441,21 +527,7 @@ class _LoginScreenState extends State<LoginScreen>
                                                 alignment:
                                                     Alignment.centerRight,
                                                 child: GestureDetector(
-                                                  onTap: () {
-                                                    ScaffoldMessenger.of(
-                                                      context,
-                                                    ).showSnackBar(
-                                                      SnackBar(
-                                                        content: const Text(
-                                                          'Recuperación de contraseña',
-                                                        ),
-                                                        backgroundColor:
-                                                            const Color(
-                                                              0xFF58CC02,
-                                                            ),
-                                                      ),
-                                                    );
-                                                  },
+                                                  onTap: () => _mostrarDialogRecuperarContrasenya(),
                                                   child: Padding(
                                                     padding:
                                                         EdgeInsets.symmetric(

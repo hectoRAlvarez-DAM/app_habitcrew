@@ -1,370 +1,108 @@
 import 'package:app_habitcrew/Screen/models/archievement.dart';
 import 'package:app_habitcrew/Screen/models/archievement_category.dart';
+import 'package:app_habitcrew/servicios/achievement_service.dart';
 import 'package:flutter/material.dart';
 
 class AchievementRepository {
+  final AchievementService _service = AchievementService();
+
   Future<List<AchievementCategory>> getCategories() async {
-    await Future.delayed(const Duration(milliseconds: 600));
+    final progreso = await _service.obtenerProgreso();
+
+    final totalCompletados = progreso['totalCompletados'] as int? ?? 0;
+    final mejorRacha = progreso['mejorRacha'] as int? ?? 0;
+    final numHabitos = progreso['numHabitos'] as int? ?? 0;
+    final diasPerfectos = progreso['diasPerfectos'] as int? ?? 0;
+    final numAmigos = progreso['numAmigos'] as int? ?? 0;
+    final desbloqueados = List<String>.from(progreso['logrosDesbloqueados'] ?? []);
+    final fechasLogros = progreso['fechasLogros'] as Map<String, dynamic>? ?? {};
+
+    Achievement _build(AchievementDefinition def) {
+      int current = 0;
+      switch (def.conditionType) {
+        case 'racha': current = mejorRacha; break;
+        case 'total_completados': current = totalCompletados; break;
+        case 'num_habitos': current = numHabitos; break;
+        case 'dias_perfectos': current = diasPerfectos; break;
+        case 'amigos': current = numAmigos; break;
+      }
+
+      final isUnlocked = desbloqueados.contains(def.id);
+      final fechaTimestamp = fechasLogros[def.id];
+      DateTime? unlockedDate;
+      if (fechaTimestamp != null) {
+        try {
+          unlockedDate = (fechaTimestamp as dynamic).toDate();
+        } catch (_) {}
+      }
+
+      return Achievement(
+        id: def.id,
+        title: def.title,
+        description: def.description,
+        icon: def.icon,
+        isUnlocked: isUnlocked,
+        unlockedDate: unlockedDate,
+        currentValue: current.clamp(0, def.targetValue),
+        targetValue: def.targetValue,
+        categoryId: def.categoryId,
+        coinReward: def.coinReward,
+      );
+    }
+
+    final constancia = AchievementService.allAchievements
+        .where((a) => a.categoryId == '1')
+        .map(_build)
+        .toList();
+
+    final progreso2 = AchievementService.allAchievements
+        .where((a) => a.categoryId == '2')
+        .map(_build)
+        .toList();
+
+    final maestria = AchievementService.allAchievements
+        .where((a) => a.categoryId == '3')
+        .map(_build)
+        .toList();
+
+    final equipo = AchievementService.allAchievements
+        .where((a) => a.categoryId == '4')
+        .map(_build)
+        .toList();
 
     return [
-      // ─── CONSTANCIA ────────────────────────────────────────────────
+      AchievementCategory(
+        id: '0',
+        name: 'Especial',
+        icon: Icons.rocket_launch,
+        achievements: AchievementService.allAchievements
+            .where((a) => a.categoryId == '0')
+            .map(_build)
+            .toList(),
+      ),
       AchievementCategory(
         id: '1',
         name: 'Constancia',
         icon: Icons.local_fire_department,
-        achievements: [
-          Achievement(
-            id: 'a1',
-            title: 'Primera chispa',
-            description: 'Completa un hábito por primera vez',
-            icon: Icons.star,
-            isUnlocked: true,
-            unlockedDate: DateTime.now().subtract(const Duration(days: 20)),
-            currentValue: 1,
-            targetValue: 1,
-            categoryId: '1',
-            coinReward: 25,
-          ),
-          Achievement(
-            id: 'a2',
-            title: 'Racha de 3 días',
-            description: 'Mantén un hábito 3 días seguidos',
-            icon: Icons.whatshot,
-            isUnlocked: true,
-            unlockedDate: DateTime.now().subtract(const Duration(days: 17)),
-            currentValue: 3,
-            targetValue: 3,
-            categoryId: '1',
-            coinReward: 50,
-          ),
-          Achievement(
-            id: 'a3',
-            title: 'Racha semanal',
-            description: 'Mantén un hábito 7 días seguidos',
-            icon: Icons.calendar_today,
-            isUnlocked: true,
-            unlockedDate: DateTime.now().subtract(const Duration(days: 13)),
-            currentValue: 7,
-            targetValue: 7,
-            categoryId: '1',
-            coinReward: 75,
-          ),
-          Achievement(
-            id: 'a4',
-            title: 'Dos semanas',
-            description: 'Mantén una racha de 14 días consecutivos',
-            icon: Icons.date_range,
-            isUnlocked: false,
-            currentValue: 14,
-            targetValue: 14,
-            categoryId: '1',
-            coinReward: 150,
-          ),
-          Achievement(
-            id: 'a5',
-            title: 'Tres semanas',
-            description: 'Mantén una racha de 21 días consecutivos',
-            icon: Icons.event_repeat,
-            isUnlocked: false,
-            currentValue: 14,
-            targetValue: 21,
-            categoryId: '1',
-            coinReward: 200,
-          ),
-          Achievement(
-            id: 'a6',
-            title: 'Racha mensual',
-            description: 'Mantén un hábito 30 días seguidos',
-            icon: Icons.calendar_month,
-            isUnlocked: false,
-            currentValue: 14,
-            targetValue: 30,
-            categoryId: '1',
-            coinReward: 300,
-          ),
-          Achievement(
-            id: 'a7',
-            title: 'Dos meses',
-            description: 'Mantén una racha de 60 días consecutivos',
-            icon: Icons.auto_awesome,
-            isUnlocked: false,
-            currentValue: 14,
-            targetValue: 60,
-            categoryId: '1',
-            coinReward: 500,
-          ),
-          Achievement(
-            id: 'a8',
-            title: 'Trimestre de fuego',
-            description: 'Mantén una racha de 90 días consecutivos',
-            icon: Icons.local_fire_department,
-            isUnlocked: false,
-            currentValue: 14,
-            targetValue: 90,
-            categoryId: '1',
-            coinReward: 700,
-          ),
-          Achievement(
-            id: 'a9',
-            title: 'Centenario',
-            description: 'Alcanza una racha de 100 días',
-            icon: Icons.emoji_events,
-            isUnlocked: false,
-            currentValue: 14,
-            targetValue: 100,
-            categoryId: '1',
-            coinReward: 800,
-          ),
-          Achievement(
-            id: 'a10',
-            title: 'Semestre legendario',
-            description: 'Mantén una racha de 180 días consecutivos',
-            icon: Icons.workspace_premium,
-            isUnlocked: false,
-            currentValue: 14,
-            targetValue: 180,
-            categoryId: '1',
-            coinReward: 1000,
-          ),
-          Achievement(
-            id: 'a11',
-            title: 'Año completo',
-            description: 'Mantén una racha durante 365 días',
-            icon: Icons.military_tech,
-            isUnlocked: false,
-            currentValue: 14,
-            targetValue: 365,
-            categoryId: '1',
-            coinReward: 2000,
-          ),
-        ],
+        achievements: constancia,
       ),
-
-      // ─── PROGRESO ──────────────────────────────────────────────────
       AchievementCategory(
         id: '2',
         name: 'Progreso',
         icon: Icons.trending_up,
-        achievements: [
-          Achievement(
-            id: 'b1',
-            title: 'Primer hábito',
-            description: 'Crea tu primer hábito',
-            icon: Icons.add_task,
-            isUnlocked: true,
-            unlockedDate: DateTime.now().subtract(const Duration(days: 20)),
-            currentValue: 1,
-            targetValue: 1,
-            categoryId: '2',
-            coinReward: 25,
-          ),
-          Achievement(
-            id: 'b2',
-            title: 'Coleccionista',
-            description: 'Crea 5 hábitos diferentes',
-            icon: Icons.list_alt,
-            isUnlocked: false,
-            currentValue: 3,
-            targetValue: 5,
-            categoryId: '2',
-            coinReward: 100,
-          ),
-          Achievement(
-            id: 'b3',
-            title: 'Arsenal',
-            description: 'Crea 10 hábitos diferentes',
-            icon: Icons.grid_view,
-            isUnlocked: false,
-            currentValue: 3,
-            targetValue: 10,
-            categoryId: '2',
-            coinReward: 200,
-          ),
-          Achievement(
-            id: 'b4',
-            title: 'Máquina de hábitos',
-            description: 'Completa 50 hábitos en total',
-            icon: Icons.done_all,
-            isUnlocked: false,
-            currentValue: 22,
-            targetValue: 50,
-            categoryId: '2',
-            coinReward: 150,
-          ),
-          Achievement(
-            id: 'b5',
-            title: 'Centenario',
-            description: 'Completa 100 hábitos en total',
-            icon: Icons.verified,
-            isUnlocked: false,
-            currentValue: 22,
-            targetValue: 100,
-            categoryId: '2',
-            coinReward: 300,
-          ),
-          Achievement(
-            id: 'b6',
-            title: 'Imparable',
-            description: 'Completa 500 hábitos en total',
-            icon: Icons.bolt,
-            isUnlocked: false,
-            currentValue: 22,
-            targetValue: 500,
-            categoryId: '2',
-            coinReward: 800,
-          ),
-          Achievement(
-            id: 'b7',
-            title: 'Leyenda',
-            description: 'Completa 1000 hábitos en total',
-            icon: Icons.diamond,
-            isUnlocked: false,
-            currentValue: 22,
-            targetValue: 1000,
-            categoryId: '2',
-            coinReward: 1500,
-          ),
-        ],
+        achievements: progreso2,
       ),
-
-      // ─── MAESTRÍA ──────────────────────────────────────────────────
       AchievementCategory(
         id: '3',
         name: 'Maestría',
         icon: Icons.military_tech,
-        achievements: [
-          Achievement(
-            id: 'c1',
-            title: 'Disciplinado',
-            description: 'Completa todos tus hábitos del día 10 veces',
-            icon: Icons.verified,
-            isUnlocked: false,
-            currentValue: 4,
-            targetValue: 10,
-            categoryId: '3',
-            coinReward: 200,
-          ),
-          Achievement(
-            id: 'c2',
-            title: 'Sin excusas',
-            description: 'No faltes ningún día durante un mes',
-            icon: Icons.shield,
-            isUnlocked: false,
-            currentValue: 14,
-            targetValue: 30,
-            categoryId: '3',
-            coinReward: 400,
-          ),
-          Achievement(
-            id: 'c3',
-            title: 'Perfeccionista',
-            description: 'Completa todos tus hábitos del día durante 60 días',
-            icon: Icons.grade,
-            isUnlocked: false,
-            currentValue: 14,
-            targetValue: 60,
-            categoryId: '3',
-            coinReward: 600,
-          ),
-          Achievement(
-            id: 'c4',
-            title: 'Maestro',
-            description: 'Completa todos tus hábitos del día durante 100 días',
-            icon: Icons.workspace_premium,
-            isUnlocked: false,
-            currentValue: 14,
-            targetValue: 100,
-            categoryId: '3',
-            coinReward: 1000,
-          ),
-          Achievement(
-            id: 'c5',
-            title: 'Inmortal',
-            description: 'Completa todos tus hábitos del día durante 200 días',
-            icon: Icons.auto_awesome,
-            isUnlocked: false,
-            currentValue: 14,
-            targetValue: 200,
-            categoryId: '3',
-            coinReward: 2000,
-          ),
-        ],
+        achievements: maestria,
       ),
-
-      // ─── EQUIPO ────────────────────────────────────────────────────
       AchievementCategory(
         id: '4',
         name: 'Equipo',
         icon: Icons.group,
-        achievements: [
-          Achievement(
-            id: 'd1',
-            title: 'Primer compañero',
-            description: 'Invita a un amigo a unirse a tu crew',
-            icon: Icons.person_add,
-            isUnlocked: true,
-            unlockedDate: DateTime.now().subtract(const Duration(days: 5)),
-            currentValue: 1,
-            targetValue: 1,
-            categoryId: '4',
-            coinReward: 50,
-          ),
-          Achievement(
-            id: 'd2',
-            title: 'Motivador',
-            description: 'Anima a 5 compañeros de tu crew',
-            icon: Icons.thumb_up,
-            isUnlocked: false,
-            currentValue: 2,
-            targetValue: 5,
-            categoryId: '4',
-            coinReward: 100,
-          ),
-          Achievement(
-            id: 'd3',
-            title: 'Influencer',
-            description: 'Anima a 10 compañeros de tu crew',
-            icon: Icons.record_voice_over,
-            isUnlocked: false,
-            currentValue: 2,
-            targetValue: 10,
-            categoryId: '4',
-            coinReward: 250,
-          ),
-          Achievement(
-            id: 'd4',
-            title: 'Crew legendario',
-            description: 'Completa un desafío grupal con tu crew al 100%',
-            icon: Icons.groups,
-            isUnlocked: false,
-            currentValue: 0,
-            targetValue: 1,
-            categoryId: '4',
-            coinReward: 300,
-          ),
-          Achievement(
-            id: 'd5',
-            title: 'Líder nato',
-            description: 'Crea y gestiona 3 desafíos grupales',
-            icon: Icons.emoji_people,
-            isUnlocked: false,
-            currentValue: 1,
-            targetValue: 3,
-            categoryId: '4',
-            coinReward: 200,
-          ),
-          Achievement(
-            id: 'd6',
-            title: 'Campeón grupal',
-            description: 'Completa 5 desafíos grupales',
-            icon: Icons.emoji_events,
-            isUnlocked: false,
-            currentValue: 0,
-            targetValue: 5,
-            categoryId: '4',
-            coinReward: 500,
-          ),
-        ],
+        achievements: equipo,
       ),
     ];
   }
