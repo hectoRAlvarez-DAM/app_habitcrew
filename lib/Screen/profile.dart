@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:app_habitcrew/Widgets/animated_background.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -6,6 +7,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../servicios/habit_service.dart';
 import '../servicios/achievement_service.dart';
 import 'package:app_habitcrew/Screen/profile_theme_service.dart';
+import 'package:app_habitcrew/Screen/edit_profile_screen.dart';
 import 'models/habit.dart';
 
 class Profile extends StatefulWidget {
@@ -20,6 +22,7 @@ class _ProfileState extends State<Profile> {
   String _userEmail = '';
   String _miembroDesde = '—';
   int _totalCompletados = 0;
+  String _bio = '';
 
   final AchievementService _achievementService = AchievementService();
   List<String> _insigniasEquipadas = [];
@@ -30,6 +33,7 @@ class _ProfileState extends State<Profile> {
   List<Map<String, dynamic>> _itemsCofre = [];
   String? _bannerEquipado;
   String? _avatarEquipado;
+  String? _fotoPerfil;
 
   final HabitService _habitService = HabitService();
   List<Habit> _habitos = [];
@@ -57,6 +61,9 @@ class _ProfileState extends State<Profile> {
         _itemsCofre = List<Map<String, dynamic>>.from(data['itemsCofre'] ?? []);
         _bannerEquipado = data['bannerEquipado'] as String?;
         _avatarEquipado = data['avatarEquipado'] as String?;
+        _fotoPerfil = data['fotoPerfil'] as String?;
+        _bio = data['bio'] as String? ?? '';
+        _userName = data['nom'] as String? ?? _userName;
       });
     });
   }
@@ -141,104 +148,101 @@ class _ProfileState extends State<Profile> {
         child: SingleChildScrollView(
           child: Column(
             children: [
-              // Banner dinámico
+              // Banner dinámico (solo lectura, editar desde botón)
               Stack(
                 clipBehavior: Clip.none,
                 children: [
-                  GestureDetector(
-                    onTap: () => _mostrarSelectorBanner(),
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 500),
-                      height: 150,
-                      width: double.infinity,
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: _getBannerColors(),
-                        ),
-                        borderRadius: const BorderRadius.only(
-                          bottomLeft: Radius.circular(16),
-                          bottomRight: Radius.circular(16),
-                        ),
+                  AnimatedContainer(
+                    duration: const Duration(milliseconds: 500),
+                    height: 150,
+                    width: double.infinity,
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: _getBannerColors(),
                       ),
-                      child: Stack(
-                        children: [
-                          Positioned.fill(
+                      borderRadius: const BorderRadius.only(
+                        bottomLeft: Radius.circular(16),
+                        bottomRight: Radius.circular(16),
+                      ),
+                    ),
+                    child: Stack(
+                      children: [
+                        Positioned.fill(
+                          child: ClipRRect(
+                            borderRadius: const BorderRadius.only(
+                              bottomLeft: Radius.circular(16),
+                              bottomRight: Radius.circular(16),
+                            ),
                             child: CustomPaint(
                                 painter: DiscordPatternPainter()),
                           ),
-                          // Contenido del banner
-                          if (_bannerEquipado == 'Beta')
-                            Center(
-                              child: Text(
-                                'BETA',
-                                style: TextStyle(
-                                  fontSize: 48,
-                                  fontWeight: FontWeight.w900,
-                                  color: Colors.white.withValues(alpha: 0.15),
-                                  letterSpacing: 16,
-                                ),
-                              ),
-                            )
-                          else if (_bannerEquipado != null)
-                            Center(
-                              child: Opacity(
-                                opacity: 0.3,
-                                child: Text(
-                                  ProfileThemeService.getBanner(_bannerEquipado)?.emoji ?? '',
-                                  style: const TextStyle(fontSize: 80),
-                                ),
+                        ),
+                        if (_bannerEquipado == 'Beta')
+                          Center(
+                            child: Text(
+                              'BETA',
+                              style: TextStyle(
+                                fontSize: 48,
+                                fontWeight: FontWeight.w900,
+                                color: Colors.white.withValues(alpha: 0.15),
+                                letterSpacing: 16,
                               ),
                             ),
-                          // Botón de cambiar banner
-                          Positioned(
-                            top: 12,
-                            right: 12,
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 10, vertical: 5),
-                              decoration: BoxDecoration(
-                                color: Colors.black.withValues(alpha: 0.4),
-                                borderRadius: BorderRadius.circular(20),
-                              ),
-                              child: const Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(Icons.edit, color: Colors.white70, size: 12),
-                                  SizedBox(width: 4),
-                                  Text('Banner', style: TextStyle(color: Colors.white70, fontSize: 11)),
-                                ],
+                          )
+                        else if (_bannerEquipado != null)
+                          Center(
+                            child: Opacity(
+                              opacity: 0.3,
+                              child: Text(
+                                ProfileThemeService.getBanner(_bannerEquipado)?.emoji ?? '',
+                                style: const TextStyle(fontSize: 80),
                               ),
                             ),
                           ),
-                        ],
-                      ),
+                        // Botón editar perfil
+                        Positioned(
+                          top: 12,
+                          right: 12,
+                          child: GestureDetector(
+                            onTap: _abrirEditorPerfil,
+                            child: Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: Colors.black.withValues(alpha: 0.4),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: const Icon(Icons.edit,
+                                  color: Colors.white, size: 18),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                   // Avatar
                   Positioned(
                     bottom: -50,
                     left: 20,
-                    child: GestureDetector(
-                      onTap: () => _mostrarSelectorAvatar(),
-                      child: Container(
-                        width: 100,
-                        height: 100,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          border: Border.all(color: Colors.white, width: 4),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.3),
-                              blurRadius: 10,
-                              offset: const Offset(0, 4),
-                            ),
-                          ],
-                        ),
-                        child: ClipOval(
-                          child: _buildAvatarContent(size: 100),
-                        ),
+                    child: Container(
+                      width: 100,
+                      height: 100,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(color: Colors.white, width: 4),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.3),
+                            blurRadius: 10,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: ClipOval(
+                        child: _fotoPerfil != null
+                            ? _buildFotoWidget(_fotoPerfil!)
+                            : _buildAvatarContent(size: 100),
                       ),
                     ),
                   ),
@@ -306,6 +310,17 @@ class _ProfileState extends State<Profile> {
                               ),
                             ],
                           ),
+                          if (_bio.isNotEmpty) ...[
+                            const SizedBox(height: 10),
+                            Text(
+                              _bio,
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: Colors.white.withValues(alpha: 0.55),
+                                height: 1.4,
+                              ),
+                            ),
+                          ],
                         ],
                       ),
                     ),
@@ -317,7 +332,7 @@ class _ProfileState extends State<Profile> {
                             color: Colors.white.withValues(alpha: 0.1)),
                       ),
                       child: IconButton(
-                        onPressed: () {},
+                        onPressed: _abrirEditorPerfil,
                         icon: const Icon(Icons.edit,
                             color: Colors.white, size: 20),
                       ),
@@ -488,12 +503,56 @@ class _ProfileState extends State<Profile> {
     );
   }
 
+  void _abrirEditorPerfil() {
+    Navigator.push(
+      context,
+      PageRouteBuilder(
+        pageBuilder: (_, animation, __) => EditProfileScreen(
+          nombreActual: _userName,
+          fotoActual: _fotoPerfil,
+          bannerActual: _bannerEquipado,
+          avatarActual: _avatarEquipado,
+          bioActual: _bio,
+          itemsCofre: _itemsCofre,
+        ),
+        transitionsBuilder: (_, animation, __, child) => SlideTransition(
+          position: Tween<Offset>(
+            begin: const Offset(0, 1),
+            end: Offset.zero,
+          ).animate(CurvedAnimation(
+            parent: animation,
+            curve: Curves.easeOutCubic,
+          )),
+          child: child,
+        ),
+        transitionDuration: const Duration(milliseconds: 350),
+      ),
+    );
+  }
+
   // ─── Helpers visuales ───────────────────────────────────────────
 
   List<Color> _getBannerColors() {
     final theme = ProfileThemeService.getBanner(_bannerEquipado);
     return theme?.gradientColors ??
         ProfileThemeService.defaultBanner.gradientColors;
+  }
+
+  Widget _buildFotoWidget(String foto) {
+    try {
+      if (foto.startsWith('data:image')) {
+        final base64Data = foto.split(',').last;
+        return Image.memory(
+          base64Decode(base64Data),
+          fit: BoxFit.cover,
+          errorBuilder: (_, __, ___) => _buildAvatarContent(size: 100),
+        );
+      }
+      return Image.network(foto, fit: BoxFit.cover,
+          errorBuilder: (_, __, ___) => _buildAvatarContent(size: 100));
+    } catch (_) {
+      return _buildAvatarContent(size: 100);
+    }
   }
 
   Widget _buildAvatarContent({required double size}) {
@@ -532,173 +591,6 @@ class _ProfileState extends State<Profile> {
     );
   }
 
-  void _mostrarSelectorBanner() {
-    // Combinar banners del cofre + default
-    final disponibles = [
-      null, // Default
-      ..._itemsCofre
-          .where((i) => i['tipo'] == 'banner')
-          .map((i) => i['nombre'] as String?),
-    ];
-
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: const Color(0xFF1E1E2E),
-      shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-      builder: (ctx) => Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text('Elige tu banner',
-                style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold)),
-            const SizedBox(height: 16),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: disponibles.map((nombre) {
-                final theme = nombre != null
-                    ? ProfileThemeService.getBanner(nombre)
-                    : ProfileThemeService.defaultBanner;
-                final isEquipado = _bannerEquipado == nombre;
-                return GestureDetector(
-                  onTap: () async {
-                    Navigator.pop(ctx);
-                    if (nombre == null) {
-                      await _achievementService.desequiparBanner();
-                    } else {
-                      await _achievementService.equiparBanner(nombre);
-                    }
-                  },
-                  child: Container(
-                    width: 100,
-                    height: 60,
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: theme?.gradientColors ??
-                            [Colors.grey.shade800],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(
-                        color: isEquipado
-                            ? const Color(0xFF22C55E)
-                            : Colors.transparent,
-                        width: 2,
-                      ),
-                    ),
-                    child: Center(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          if (theme?.emoji.isNotEmpty == true)
-                            Text(theme!.emoji,
-                                style: const TextStyle(fontSize: 18)),
-                          Text(
-                            nombre ?? 'Default',
-                            style: const TextStyle(
-                                color: Colors.white70, fontSize: 9),
-                            textAlign: TextAlign.center,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                );
-              }).toList(),
-            ),
-            const SizedBox(height: 20),
-          ],
-        ),
-      ),
-    );
-  }
-
-  void _mostrarSelectorAvatar() {
-    final disponibles = [
-      null, // Default (inicial)
-      ..._itemsCofre
-          .where((i) => i['tipo'] == 'avatar')
-          .map((i) => i['nombre'] as String?),
-    ];
-
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: const Color(0xFF1E1E2E),
-      shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-      builder: (ctx) => Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text('Elige tu avatar',
-                style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold)),
-            const SizedBox(height: 16),
-            Wrap(
-              spacing: 12,
-              runSpacing: 12,
-              children: disponibles.map((nombre) {
-                final theme = nombre != null
-                    ? ProfileThemeService.getAvatar(nombre)
-                    : null;
-                final isEquipado = _avatarEquipado == nombre;
-                return GestureDetector(
-                  onTap: () async {
-                    Navigator.pop(ctx);
-                    if (nombre == null) {
-                      await _achievementService.desequiparAvatar();
-                    } else {
-                      await _achievementService.equiparAvatar(nombre);
-                    }
-                  },
-                  child: Container(
-                    width: 64,
-                    height: 64,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: theme?.backgroundColor ??
-                          ProfileThemeService.defaultAvatarColor,
-                      border: Border.all(
-                        color: isEquipado
-                            ? const Color(0xFF22C55E)
-                            : Colors.transparent,
-                        width: 3,
-                      ),
-                    ),
-                    child: Center(
-                      child: theme != null
-                          ? Text(theme.emoji,
-                              style: const TextStyle(fontSize: 28))
-                          : Text(
-                              _userName.isNotEmpty
-                                  ? _userName[0].toUpperCase()
-                                  : '?',
-                              style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 26,
-                                  fontWeight: FontWeight.bold)),
-                    ),
-                  ),
-                );
-              }).toList(),
-            ),
-            const SizedBox(height: 20),
-          ],
-        ),
-      ),
-    );
-  }
 
   Widget _buildInsigniaChip(dynamic def) {
     return Container(
