@@ -13,6 +13,13 @@ class Habit {
   final int totalCompletados;
   final bool esDefecto;
 
+  // Campos para hábitos grupales
+  final bool esGrupal;
+  final String? grupoId;
+
+  // Configuración de notificaciones
+  final Map<String, dynamic>? notificacion;
+
   Habit({
     required this.id,
     required this.nombre,
@@ -25,16 +32,41 @@ class Habit {
     required this.recordRacha,
     required this.totalCompletados,
     required this.esDefecto,
+    this.esGrupal = false,
+    this.grupoId,
+    this.notificacion,
   });
 
-  /// true si el hábito ya fue completado hoy
+  /// true si el hábito ya fue completado en el período actual
+  /// según su frecuencia (diario, semanal, mensual)
   bool get completadoHoy {
     if (fechaUltimoCompletado == null) return false;
     final now = DateTime.now();
     final ultimo = fechaUltimoCompletado!;
-    return ultimo.year == now.year &&
-        ultimo.month == now.month &&
-        ultimo.day == now.day;
+
+    switch (frecuencia.toLowerCase()) {
+      case 'diario':
+        return ultimo.year == now.year &&
+            ultimo.month == now.month &&
+            ultimo.day == now.day;
+
+      case 'semanal':
+        // Misma semana ISO (lunes a domingo)
+        final inicioSemanaActual = now.subtract(Duration(days: now.weekday - 1));
+        final inicioSemana = DateTime(
+            inicioSemanaActual.year, inicioSemanaActual.month, inicioSemanaActual.day);
+        final finSemana = inicioSemana.add(const Duration(days: 7));
+        return ultimo.isAfter(inicioSemana.subtract(const Duration(seconds: 1))) &&
+            ultimo.isBefore(finSemana);
+
+      case 'mensual':
+        return ultimo.year == now.year && ultimo.month == now.month;
+
+      default:
+        return ultimo.year == now.year &&
+            ultimo.month == now.month &&
+            ultimo.day == now.day;
+    }
   }
 
   factory Habit.fromFirestore(DocumentSnapshot doc) {
@@ -53,6 +85,9 @@ class Habit {
       recordRacha: (data['recordRacha'] as num?)?.toInt() ?? 0,
       totalCompletados: (data['totalCompletados'] as num?)?.toInt() ?? 0,
       esDefecto: data['esDefecto'] ?? false,
+      esGrupal: data['esGrupal'] ?? false,
+      grupoId: data['grupoId'] as String?,
+      notificacion: data['notificacion'] as Map<String, dynamic>?,
     );
   }
 }

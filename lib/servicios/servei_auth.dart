@@ -1,3 +1,4 @@
+import 'dart:math';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'coin_service.dart';
@@ -6,6 +7,12 @@ import 'habit_service.dart';
 class ServeiAuth {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+
+  String _generarCodigoAmigo() {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    final r = Random();
+    return List.generate(6, (_) => chars[r.nextInt(chars.length)]).join();
+  }
 
   Future<String?> registrarUsuariAmbEmailPassword(
       String email, String password, String username) async {
@@ -24,10 +31,11 @@ class ServeiAuth {
           "monedas": 500,
           "monedasGanadas": 500,
           "totalLogros": 0,
+          "codigoAmigo": _generarCodigoAmigo(),
+          "amigos": [],
+          "solicitudesRecibidas": [],
         });
         print("✅ Usuario guardado en Firestore: $uid");
-
-        // Usamos el mismo HabitService con el usuario ya autenticado
         final habitService = HabitService();
         await habitService.crearHabitosDefecto();
         print("✅ Hábitos por defecto creados");
@@ -76,6 +84,24 @@ class ServeiAuth {
       }
     } on FirebaseException catch (e) {
       return "Error desconegut: ${e.message}";
+    }
+  }
+
+  /// Envía un email de recuperación de contraseña.
+  /// Devuelve null si fue bien, o un mensaje de error.
+  Future<String?> recuperarContrasenya(String email) async {
+    try {
+      await _auth.sendPasswordResetEmail(email: email.trim());
+      return null;
+    } on FirebaseAuthException catch (e) {
+      switch (e.code) {
+        case "user-not-found":
+          return "No existe ninguna cuenta con este correo";
+        case "invalid-email":
+          return "El correo introducido no es válido";
+        default:
+          return "Error al enviar el correo: ${e.message}";
+      }
     }
   }
 

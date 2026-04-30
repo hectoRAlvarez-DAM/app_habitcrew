@@ -3,6 +3,7 @@ import 'package:app_habitcrew/Screen/models/archievement_category.dart';
 import 'package:app_habitcrew/Widgets/achivement_unlock_overlay.dart';
 import 'package:app_habitcrew/servicios/achievement_service.dart';
 import 'package:app_habitcrew/servicios/coin_service.dart';
+import 'package:app_habitcrew/servicios/achievement_service.dart';
 import 'package:flutter/material.dart';
 import '../widgets/animated_background.dart';
 
@@ -14,6 +15,11 @@ class AchievementsPage extends StatefulWidget {
 }
 
 class _AchievementsPageState extends State<AchievementsPage> {
+<<<<<<< HEAD
+=======
+  final _repository = AchievementRepository();
+  final _achievementService = AchievementService();
+>>>>>>> origin/SPRINT5
   List<AchievementCategory> _categories = [];
   bool _isLoading = true;
   String? _expandedCategoryId;
@@ -600,29 +606,59 @@ class _AchievementsPageState extends State<AchievementsPage> {
                       ),
                     ),
                     const SizedBox(height: 8),
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton.icon(
-                        onPressed: () => _claimCoins(achievement),
-                        icon: const Icon(Icons.monetization_on,
-                            size: 16, color: Color(0xFFFFD700)),
-                        label: Text(
-                          'Reclamar ${achievement.coinReward} monedas',
-                          style: const TextStyle(fontSize: 13),
-                        ),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor:
-                              const Color(0xFF22C55E).withOpacity(0.2),
-                          foregroundColor: Colors.white,
-                          side: BorderSide(
-                            color: const Color(0xFF22C55E).withOpacity(0.5),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: ElevatedButton.icon(
+                            onPressed: () => _claimCoins(achievement),
+                            icon: const Icon(Icons.monetization_on,
+                                size: 16, color: Color(0xFFFFD700)),
+                            label: Text(
+                              'Reclamar ${achievement.coinReward} monedas',
+                              style: const TextStyle(fontSize: 13),
+                            ),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor:
+                                  const Color(0xFF22C55E).withValues(alpha: 0.2),
+                              foregroundColor: Colors.white,
+                              side: BorderSide(
+                                color: const Color(0xFF22C55E).withValues(alpha: 0.5),
+                              ),
+                              padding: const EdgeInsets.symmetric(vertical: 8),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                            ),
                           ),
-                          padding: const EdgeInsets.symmetric(vertical: 8),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
-                          ),
                         ),
-                      ),
+                        const SizedBox(width: 8),
+                        // Botón equipar insignia
+                        ElevatedButton(
+                          onPressed: () async {
+                            await _achievementService.equiparInsignia(achievement.id);
+                            if (mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('🏅 "${achievement.title}" equipada en tu perfil'),
+                                  backgroundColor: const Color(0xFF22C55E),
+                                ),
+                              );
+                            }
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF5865F2).withValues(alpha: 0.2),
+                            foregroundColor: Colors.white,
+                            side: BorderSide(
+                              color: const Color(0xFF5865F2).withValues(alpha: 0.5),
+                            ),
+                            padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                          ),
+                          child: const Icon(Icons.shield, size: 16),
+                        ),
+                      ],
                     ),
                   ],
                 ],

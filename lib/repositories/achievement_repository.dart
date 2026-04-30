@@ -1,5 +1,6 @@
 import 'package:app_habitcrew/Screen/models/archievement.dart';
 import 'package:app_habitcrew/Screen/models/archievement_category.dart';
+import 'package:app_habitcrew/servicios/achievement_service.dart';
 import 'package:flutter/material.dart';
 
 /// Catálogo estático de 100 logros distribuidos en 7 categorías.
@@ -14,13 +15,88 @@ import 'package:flutter/material.dart';
 ///   6 · Tienda       → numCompras para f1-f8 · monedas actuales para f9-f15
 ///   7 · Fidelidad    → días transcurridos desde data_registre
 class AchievementRepository {
+  final AchievementService _service = AchievementService();
+
   Future<List<AchievementCategory>> getCategories() async {
+    final progreso = await _service.obtenerProgreso();
+
+    final totalCompletados = progreso['totalCompletados'] as int? ?? 0;
+    final mejorRacha = progreso['mejorRacha'] as int? ?? 0;
+    final numHabitos = progreso['numHabitos'] as int? ?? 0;
+    final diasPerfectos = progreso['diasPerfectos'] as int? ?? 0;
+    final numAmigos = progreso['numAmigos'] as int? ?? 0;
+    final desbloqueados = List<String>.from(progreso['logrosDesbloqueados'] ?? []);
+    final fechasLogros = progreso['fechasLogros'] as Map<String, dynamic>? ?? {};
+
+    Achievement _build(AchievementDefinition def) {
+      int current = 0;
+      switch (def.conditionType) {
+        case 'racha': current = mejorRacha; break;
+        case 'total_completados': current = totalCompletados; break;
+        case 'num_habitos': current = numHabitos; break;
+        case 'dias_perfectos': current = diasPerfectos; break;
+        case 'amigos': current = numAmigos; break;
+      }
+
+      final isUnlocked = desbloqueados.contains(def.id);
+      final fechaTimestamp = fechasLogros[def.id];
+      DateTime? unlockedDate;
+      if (fechaTimestamp != null) {
+        try {
+          unlockedDate = (fechaTimestamp as dynamic).toDate();
+        } catch (_) {}
+      }
+
+      return Achievement(
+        id: def.id,
+        title: def.title,
+        description: def.description,
+        icon: def.icon,
+        isUnlocked: isUnlocked,
+        unlockedDate: unlockedDate,
+        currentValue: current.clamp(0, def.targetValue),
+        targetValue: def.targetValue,
+        categoryId: def.categoryId,
+        coinReward: def.coinReward,
+      );
+    }
+
+    final constancia = AchievementService.allAchievements
+        .where((a) => a.categoryId == '1')
+        .map(_build)
+        .toList();
+
+    final progreso2 = AchievementService.allAchievements
+        .where((a) => a.categoryId == '2')
+        .map(_build)
+        .toList();
+
+    final maestria = AchievementService.allAchievements
+        .where((a) => a.categoryId == '3')
+        .map(_build)
+        .toList();
+
+    final equipo = AchievementService.allAchievements
+        .where((a) => a.categoryId == '4')
+        .map(_build)
+        .toList();
+
     return [
       // ── 1. CONSTANCIA (15 logros) ──────────────────────────────────────
+      AchievementCategory(
+        id: '0',
+        name: 'Especial',
+        icon: Icons.rocket_launch,
+        achievements: AchievementService.allAchievements
+            .where((a) => a.categoryId == '0')
+            .map(_build)
+            .toList(),
+      ),
       AchievementCategory(
         id: '1',
         name: 'Constancia',
         icon: Icons.local_fire_department,
+        achievements: constancia,
         achievements: [
           Achievement(id: 'a1',  title: 'Primera chispa',         description: 'Completa un hábito por primera vez',                  icon: Icons.star,                isUnlocked: false, currentValue: 0, targetValue: 1,    categoryId: '1', coinReward: 25),
           Achievement(id: 'a13', title: '5 días de fuego',        description: 'Mantén una racha de 5 días consecutivos',             icon: Icons.whatshot,            isUnlocked: false, currentValue: 0, targetValue: 5,    categoryId: '1', coinReward: 60),
@@ -45,6 +121,7 @@ class AchievementRepository {
         id: '2',
         name: 'Progreso',
         icon: Icons.trending_up,
+        achievements: progreso2,
         achievements: [
           // Creación de hábitos (numHabitos): b1, b2, b3, b13, b14, b15
           Achievement(id: 'b1',  title: 'Primer hábito',          description: 'Crea tu primer hábito',                               icon: Icons.add_task,            isUnlocked: false, currentValue: 0, targetValue: 1,    categoryId: '2', coinReward: 25),
@@ -71,6 +148,7 @@ class AchievementRepository {
         id: '3',
         name: 'Maestría',
         icon: Icons.military_tech,
+        achievements: maestria,
         achievements: [
           Achievement(id: 'c6',  title: 'Primer día perfecto',    description: 'Completa todos tus hábitos del día por primera vez',  icon: Icons.check_circle,        isUnlocked: false, currentValue: 0, targetValue: 1,    categoryId: '3', coinReward: 50),
           Achievement(id: 'c13', title: 'Tres perfectos',         description: 'Completa todos tus hábitos del día 3 veces',          icon: Icons.star_half,           isUnlocked: false, currentValue: 0, targetValue: 3,    categoryId: '3', coinReward: 75),
@@ -95,6 +173,7 @@ class AchievementRepository {
         id: '4',
         name: 'Equipo',
         icon: Icons.group,
+        achievements: equipo,
         achievements: [
           Achievement(id: 'd1',  title: 'Primer compañero',       description: 'Invita a un amigo a unirse a tu crew',                icon: Icons.person_add,          isUnlocked: false, currentValue: 0, targetValue: 1,  categoryId: '4', coinReward: 50),
           Achievement(id: 'd2',  title: 'Motivador',              description: 'Anima a 5 compañeros de tu crew',                     icon: Icons.thumb_up,            isUnlocked: false, currentValue: 0, targetValue: 5,  categoryId: '4', coinReward: 100),
