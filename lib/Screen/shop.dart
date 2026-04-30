@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:app_habitcrew/Widgets/animated_background.dart';
 import 'package:app_habitcrew/Widgets/glassmorphism_card.dart';
 import 'package:app_habitcrew/servicios/coin_service.dart';
+import 'package:app_habitcrew/servicios/shop_service.dart';
 
 class Shop extends StatefulWidget {
   const Shop({super.key});
@@ -37,13 +38,25 @@ class _ShopState extends State<Shop> with SingleTickerProviderStateMixin {
     StoreItem(id: 'bg4', name: 'Minimalista', price: 90, icon: Icons.circle, color: Colors.grey),
   ];
 
-  final Set<String> purchasedIds = {};
+  Set<String> purchasedIds = {};
+  bool _loadingPurchases = true;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
     CoinService.instance.coinsNotifier.addListener(_onCoinsChanged);
+    _loadPurchases();
+  }
+
+  Future<void> _loadPurchases() async {
+    final ids = await ShopService.instance.loadPurchasedIds();
+    if (mounted) {
+      setState(() {
+        purchasedIds = ids;
+        _loadingPurchases = false;
+      });
+    }
   }
 
   void _onCoinsChanged() => setState(() {});
@@ -79,12 +92,11 @@ class _ShopState extends State<Shop> with SingleTickerProviderStateMixin {
             child: const Text('Cancelar', style: TextStyle(color: Colors.grey)),
           ),
           ElevatedButton(
-            onPressed: () {
+            onPressed: () async {
               Navigator.pop(ctx);
-              setState(() {
-                CoinService.instance.spend(item.price);
-                purchasedIds.add(item.id);
-              });
+              await CoinService.instance.spend(item.price);
+              await ShopService.instance.savePurchase(item.id, item.name, item.price);
+              if (mounted) setState(() => purchasedIds.add(item.id));
               _showMessage('¡Compra realizada!');
             },
             style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF22C55E)),
@@ -175,14 +187,18 @@ class _ShopState extends State<Shop> with SingleTickerProviderStateMixin {
 
               // Contenido de las pestañas
               Expanded(
-                child: TabBarView(
-                  controller: _tabController,
-                  children: [
-                    _buildGrid(banners),
-                    _buildGrid(avatars),
-                    _buildGrid(backgrounds),
-                  ],
-                ),
+                child: _loadingPurchases
+                    ? const Center(
+                        child: CircularProgressIndicator(
+                            color: Color(0xFF22C55E)))
+                    : TabBarView(
+                        controller: _tabController,
+                        children: [
+                          _buildGrid(banners),
+                          _buildGrid(avatars),
+                          _buildGrid(backgrounds),
+                        ],
+                      ),
               ),
             ],
           ),

@@ -6,6 +6,7 @@ import 'package:app_habitcrew/Screen/create.dart';
 import 'package:app_habitcrew/Screen/shop.dart';
 import 'package:app_habitcrew/Screen/profile.dart';
 import 'package:app_habitcrew/Widgets/bottomMenu.dart';
+import 'package:app_habitcrew/servicios/coin_service.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -24,6 +25,13 @@ class _MainScreenState extends State<MainScreen> {
     const Shop(),
     const Profile(),
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    // Cargar monedas del usuario desde Firestore al entrar
+    CoinService.instance.load();
+  }
 
   @override
   Widget build(BuildContext context) {
