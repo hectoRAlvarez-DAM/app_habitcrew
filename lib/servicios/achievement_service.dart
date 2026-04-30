@@ -1,29 +1,18 @@
 import 'package:app_habitcrew/Screen/models/archievement.dart';
 import 'package:app_habitcrew/Screen/models/archievement_category.dart';
 import 'package:app_habitcrew/repositories/achievement_repository.dart';
+import 'package:app_habitcrew/servicios/achievement_definitions.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
-/// Gestiona el estado real de logros del usuario en Firestore.
-///
-/// Colección: usuaris/{uid}/logros/{achievementId}
-/// Campos: isUnlocked, unlockedDate, coinsClaimed, claimedAt
-///
-/// Métricas para calcular progreso (calculadas en vivo desde Firestore):
-///   - Constancia (cat 1)  : mejorRacha = max(recordRacha, rachaActual) entre todos los hábitos
-///   - Progreso crear (cat 2, b1/b2/b3/b13/b14/b15): numHabitos
-///   - Progreso completar (cat 2, resto)           : totalHabitosCompletados
-///   - Maestría (cat 3)    : diasPerfectos
-///   - Equipo (cat 4)      : sin implementar (siempre 0)
-///   - Monedas (cat 5)     : monedasGanadas (acumulado total)
-///   - Tienda compras (cat 6, f1-f8) : numCompras
-///   - Tienda saldo (cat 6, f9-f15)  : monedas actuales
-///   - Fidelidad (cat 7)   : días desde data_registre
+export 'package:app_habitcrew/servicios/achievement_definitions.dart'
+    show AchievementDefinition;
+
 class AchievementService {
   static final AchievementService instance = AchievementService._internal();
   AchievementService._internal();
 
-  final FirebaseFirestore _db = FirebaseFirestore.instance;
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final _repo = AchievementRepository();
 
@@ -33,6 +22,12 @@ class AchievementService {
   static const _habitCreationIds = {'b1', 'b2', 'b3', 'b13', 'b14', 'b15'};
 
   String? get _uid => _auth.currentUser?.uid;
+
+  // Delegado a AchievementDefinition para compatibilidad con callers externos.
+  static List<AchievementDefinition> get allAchievements =>
+      AchievementDefinition.allAchievements;
+
+  // ─── Nueva arquitectura: carga completa con subcol. logros ────────
 
   /// Carga todas las categorías con el estado real del usuario.
   /// Auto-desbloquea los logros cumplidos y persiste en Firestore.
@@ -49,7 +44,7 @@ class AchievementService {
     final catalog = await _repo.getCategories();
 
     try {
-      final userRef = _db.collection('usuaris').doc(uid);
+      final userRef = _firestore.collection('usuaris').doc(uid);
 
       // ── 2. Datos del usuario y subcolecciones en paralelo ────────────────
       final results = await Future.wait([
@@ -59,7 +54,7 @@ class AchievementService {
         userRef.collection('compras').get(),
       ]);
 
-      final userDoc    = results[0] as DocumentSnapshot<Map<String, dynamic>>;
+      final userDoc     = results[0] as DocumentSnapshot<Map<String, dynamic>>;
       final habitosSnap = results[1] as QuerySnapshot<Map<String, dynamic>>;
       final logrosSnap  = results[2] as QuerySnapshot<Map<String, dynamic>>;
       final comprasSnap = results[3] as QuerySnapshot<Map<String, dynamic>>;
@@ -89,7 +84,7 @@ class AchievementService {
         if (best > mejorRacha) mejorRacha = best;
       }
 
-      // ── 5. Estados guardados ─────────────────────────────────────────────
+      // ── 5. Estados guardados en subcol. logros ───────────────────────────
       final savedLogros = {
         for (final doc in logrosSnap.docs) doc.id: doc.data()
       };
@@ -109,7 +104,7 @@ class AchievementService {
       }
 
       // ── 7. Fusionar catálogo + Firestore, auto-desbloquear nuevos ────────
-      final WriteBatch batch = _db.batch();
+      final WriteBatch batch = _firestore.batch();
 
       final updatedCategories = catalog.map((cat) {
         final updatedAchievements = cat.achievements.map((a) {
@@ -176,18 +171,17 @@ class AchievementService {
     }
   }
 
-  /// Reclama las monedas de un logro de forma atómica:
-  /// marca coinsClaimed=true e incrementa monedas en una sola transacción.
+  /// Reclama las monedas de un logro de forma atómica.
   /// Devuelve true si tuvo éxito, false si ya estaba reclamado o hubo error.
   Future<bool> claimAchievement(String achievementId, int coinAmount) async {
     final uid = _uid;
     if (uid == null) return false;
     try {
-      final userRef = _db.collection('usuaris').doc(uid);
+      final userRef = _firestore.collection('usuaris').doc(uid);
       final logroRef = userRef.collection('logros').doc(achievementId);
 
       bool alreadyClaimed = false;
-      await _db.runTransaction((tx) async {
+      await _firestore.runTransaction((tx) async {
         final snap = await tx.get(logroRef);
         if (snap.data()?['coinsClaimed'] == true) {
           alreadyClaimed = true;
@@ -216,8 +210,8 @@ class AchievementService {
     final uid = _uid;
     if (uid == null || achievementIds.isEmpty) return 0;
     try {
-      final userRef = _db.collection('usuaris').doc(uid);
-      final batch = _db.batch();
+      final userRef = _firestore.collection('usuaris').doc(uid);
+      final batch = _firestore.batch();
 
       for (final id in achievementIds) {
         batch.set(
@@ -235,6 +229,251 @@ class AchievementService {
       return totalCoins;
     } catch (_) {
       return 0;
+    }
+  }
+
+  // ─── Obtener progreso real del usuario (legacy) ──────────────────
+
+  Future<Map<String, dynamic>> obtenerProgreso() async {
+    final uid = _uid;
+    if (uid == null) return {};
+
+    try {
+      final results = await Future.wait([
+        _firestore.collection('usuaris').doc(uid).get(),
+        _firestore.collection('usuaris').doc(uid).collection('habitos').get(),
+      ]);
+
+      final userDoc     = results[0] as DocumentSnapshot;
+      final habitosSnap = results[1] as QuerySnapshot;
+      final userData    = userDoc.data() as Map<String, dynamic>? ?? {};
+
+      int mejorRacha = 0;
+      int numHabitos = habitosSnap.docs.length;
+      for (final doc in habitosSnap.docs) {
+        final data = doc.data() as Map<String, dynamic>;
+        final racha = (data['recordRacha'] as num?)?.toInt() ?? 0;
+        if (racha > mejorRacha) mejorRacha = racha;
+      }
+
+      return {
+        'totalCompletados': (userData['totalHabitosCompletados'] as num?)?.toInt() ?? 0,
+        'mejorRacha': mejorRacha,
+        'numHabitos': numHabitos,
+        'diasPerfectos': (userData['diasPerfectos'] as num?)?.toInt() ?? 0,
+        'numAmigos': (userData['amigos'] as List?)?.length ?? 0,
+        'logrosDesbloqueados': List<String>.from(userData['logrosDesbloqueados'] ?? []),
+        'insigniasEquipadas': List<String>.from(userData['insigniasEquipadas'] ?? []),
+        'fechasLogros': userData['fechasLogros'] as Map<String, dynamic>? ?? {},
+      };
+    } catch (e) {
+      return {};
+    }
+  }
+
+  /// Asigna la insignia Beta al usuario automáticamente (una sola vez).
+  Future<void> asignarInsigniaBeta() async {
+    final uid = _uid;
+    if (uid == null) return;
+
+    try {
+      final doc = await _firestore.collection('usuaris').doc(uid).get();
+      final data = doc.data() ?? {};
+      final desbloqueados = List<String>.from(data['logrosDesbloqueados'] ?? []);
+      final itemsCofre = List<Map<String, dynamic>>.from(data['itemsCofre'] ?? []);
+
+      final tieneBannerBeta = itemsCofre.any(
+          (i) => i['tipo'] == 'banner' && i['nombre'] == 'Beta');
+      final tieneAvatarBeta = itemsCofre.any(
+          (i) => i['tipo'] == 'avatar' && i['nombre'] == 'Beta');
+
+      if (desbloqueados.contains('beta') && tieneBannerBeta && tieneAvatarBeta) return;
+
+      final updates = <String, dynamic>{};
+
+      if (!desbloqueados.contains('beta')) {
+        updates['logrosDesbloqueados'] = FieldValue.arrayUnion(['beta']);
+        updates['fechasLogros'] = {'beta': Timestamp.now()};
+      }
+
+      final itemsNuevos = <Map<String, dynamic>>[];
+      if (!tieneBannerBeta) {
+        itemsNuevos.add({
+          'tipo': 'banner',
+          'nombre': 'Beta',
+          'emoji': '🚀',
+          'fecha': Timestamp.now(),
+        });
+      }
+      if (!tieneAvatarBeta) {
+        itemsNuevos.add({
+          'tipo': 'avatar',
+          'nombre': 'Beta',
+          'emoji': 'β',
+          'fecha': Timestamp.now(),
+        });
+      }
+      if (itemsNuevos.isNotEmpty) {
+        updates['itemsCofre'] = FieldValue.arrayUnion(itemsNuevos);
+      }
+
+      if (updates.isNotEmpty) {
+        await _firestore.collection('usuaris').doc(uid).set(
+          updates,
+          SetOptions(merge: true),
+        );
+      }
+    } catch (_) {}
+  }
+
+  /// Comprueba si hay logros nuevos que desbloquear y los procesa (legacy).
+  /// Devuelve lista de IDs de logros recién desbloqueados.
+  Future<List<String>> comprobarLogros() async {
+    final uid = _uid;
+    if (uid == null) return [];
+
+    final progreso = await obtenerProgreso();
+    if (progreso.isEmpty) return [];
+
+    final yaDesbloqueados = List<String>.from(progreso['logrosDesbloqueados'] ?? []);
+    final nuevosDesbloqueados = <String>[];
+
+    for (final logro in allAchievements) {
+      if (yaDesbloqueados.contains(logro.id)) continue;
+
+      int valorActual = 0;
+      switch (logro.conditionType) {
+        case 'racha':
+          valorActual = progreso['mejorRacha'] as int? ?? 0;
+          break;
+        case 'total_completados':
+          valorActual = progreso['totalCompletados'] as int? ?? 0;
+          break;
+        case 'num_habitos':
+          valorActual = progreso['numHabitos'] as int? ?? 0;
+          break;
+        case 'dias_perfectos':
+          valorActual = progreso['diasPerfectos'] as int? ?? 0;
+          break;
+        case 'amigos':
+          valorActual = progreso['numAmigos'] as int? ?? 0;
+          break;
+      }
+
+      if (valorActual >= logro.targetValue) {
+        nuevosDesbloqueados.add(logro.id);
+      }
+    }
+
+    if (nuevosDesbloqueados.isNotEmpty) {
+      final monedas = nuevosDesbloqueados.fold<int>(0, (sum, id) {
+        final def = allAchievements.firstWhere((a) => a.id == id);
+        return sum + def.coinReward;
+      });
+
+      final batch = _firestore.batch();
+      final userRef = _firestore.collection('usuaris').doc(uid);
+
+      batch.update(userRef, {
+        'logrosDesbloqueados': FieldValue.arrayUnion(nuevosDesbloqueados),
+        'fechasLogros': {
+          for (final id in nuevosDesbloqueados) id: Timestamp.now(),
+        },
+        'monedas': FieldValue.increment(monedas),
+      });
+
+      await batch.commit();
+    }
+
+    return nuevosDesbloqueados;
+  }
+
+  /// Registra un día perfecto (todos los hábitos completados).
+  Future<void> registrarDiaPerfecto() async {
+    final uid = _uid;
+    if (uid == null) return;
+
+    await _firestore.collection('usuaris').doc(uid).set(
+      {'diasPerfectos': FieldValue.increment(1)},
+      SetOptions(merge: true),
+    );
+  }
+
+  // ─── Insignias equipadas ─────────────────────────────────────────
+
+  /// Equipa una insignia (máximo 3 simultáneas).
+  Future<void> equiparInsignia(String logroId) async {
+    final uid = _uid;
+    if (uid == null) return;
+
+    final doc = await _firestore.collection('usuaris').doc(uid).get();
+    final equipadas = List<String>.from(doc.data()?['insigniasEquipadas'] ?? []);
+
+    if (equipadas.contains(logroId)) return;
+    if (equipadas.length >= 3) equipadas.removeAt(0);
+    equipadas.add(logroId);
+
+    await _firestore.collection('usuaris').doc(uid).update({
+      'insigniasEquipadas': equipadas,
+    });
+  }
+
+  /// Desequipa una insignia.
+  Future<void> desequiparInsignia(String logroId) async {
+    final uid = _uid;
+    if (uid == null) return;
+
+    await _firestore.collection('usuaris').doc(uid).update({
+      'insigniasEquipadas': FieldValue.arrayRemove([logroId]),
+    });
+  }
+
+  /// Equipa un banner en el perfil.
+  Future<void> equiparBanner(String nombre) async {
+    final uid = _uid;
+    if (uid == null) return;
+    await _firestore.collection('usuaris').doc(uid).set(
+        {'bannerEquipado': nombre}, SetOptions(merge: true));
+  }
+
+  /// Desequipa el banner.
+  Future<void> desequiparBanner() async {
+    final uid = _uid;
+    if (uid == null) return;
+    await _firestore.collection('usuaris').doc(uid).update(
+        {'bannerEquipado': null});
+  }
+
+  /// Equipa un avatar en el perfil.
+  Future<void> equiparAvatar(String nombre) async {
+    final uid = _uid;
+    if (uid == null) return;
+    await _firestore.collection('usuaris').doc(uid).set(
+        {'avatarEquipado': nombre}, SetOptions(merge: true));
+  }
+
+  /// Desequipa el avatar.
+  Future<void> desequiparAvatar() async {
+    final uid = _uid;
+    if (uid == null) return;
+    await _firestore.collection('usuaris').doc(uid).update(
+        {'avatarEquipado': null});
+  }
+
+  /// Stream de datos del usuario para actualizar insignias en tiempo real.
+  Stream<DocumentSnapshot> streamUsuario() {
+    final uid = _uid;
+    if (uid == null) return const Stream.empty();
+    return _firestore.collection('usuaris').doc(uid).snapshots();
+  }
+
+  // ─── Helper: obtener definición por ID ──────────────────────────
+
+  static AchievementDefinition? getById(String id) {
+    try {
+      return allAchievements.firstWhere((a) => a.id == id);
+    } catch (_) {
+      return null;
     }
   }
 }
