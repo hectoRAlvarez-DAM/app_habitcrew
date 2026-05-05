@@ -1,28 +1,40 @@
 pluginManagement {
+    def flutterSdkPath = {
+        def properties = new Properties()
+        file("local.properties").withInputStream { properties.load(it) }
+        def path = properties.getProperty("flutter.sdk")
+        assert path != null : "flutter.sdk no encontrado en local.properties"
+        return path
+    }()
+
+    includeBuild "$flutterSdkPath/packages/flutter_tools/gradle"
+
     repositories {
         google()
         mavenCentral()
         gradlePluginPortal()
+        // AÑADE ESTO:
+        maven { url = uri("https://storage.googleapis.com/download.flutter.io") }
     }
 }
 
-def flutterSdkPath = {
-    def properties = new Properties()
-    file("local.properties").withInputStream { properties.load(it) }
-    def flutterSdkPath = properties.getProperty("flutter.sdk")
-    assert flutterSdkPath != null : "flutter.sdk not set in local.properties"
-    return flutterSdkPath
-}()
-
-includeBuild("$flutterSdkPath/packages/flutter_tools/gradle")
+plugins {
+    id "dev.flutter.flutter-gradle-plugin" version "1.0.0" apply false
+    // Subimos a 8.6.0 para quitar el aviso de Flutter
+    id "com.android.application" version "8.6.0" apply false 
+    // Subimos a 2.1.0 para quitar el aviso de Kotlin
+    id "org.jetbrains.kotlin.android" version "2.1.0" apply false
+    id "com.google.gms.google-services" version "4.4.2" apply false 
+}
 
 dependencyResolutionManagement {
     repositoriesMode.set(RepositoriesMode.PREFER_SETTINGS)
-
     repositories {
         google()
         mavenCentral()
+        // AÑADE ESTO TAMBIÉN AQUÍ:
+        maven { url = uri("https://storage.googleapis.com/download.flutter.io") }
     }
 }
 
-include(":app")
+include ":app"

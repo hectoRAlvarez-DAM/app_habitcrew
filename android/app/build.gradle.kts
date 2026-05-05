@@ -1,8 +1,8 @@
 plugins {
     id("com.android.application")
-    id("com.google.gms.google-services")
     id("kotlin-android")
     id("dev.flutter.flutter-gradle-plugin")
+    id("com.google.gms.google-services")
 }
 
 android {
@@ -11,13 +11,14 @@ android {
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
+        // Usamos VERSION_17 pero aseguramos que el casting sea correcto
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
         isCoreLibraryDesugaringEnabled = true
     }
 
     kotlinOptions {
-        jvmTarget = JavaVersion.VERSION_17.toString()
+        jvmTarget = "17"
     }
 
     defaultConfig {
@@ -30,8 +31,10 @@ android {
 
     buildTypes {
         release {
-            // ⚠️ esto es solo para pruebas, luego deberías firmar con release
+            // Nota: Para subir a la Play Store necesitarás crear un keystore real
             signingConfig = signingConfigs.getByName("debug")
+            isMinifyEnabled = false
+            isShrinkResources = false
         }
     }
 }
@@ -41,6 +44,6 @@ flutter {
 }
 
 dependencies {
-    // ✅ versión estable (la 2.1.4 te está rompiendo el build)
-    coreLibraryDesugaring("com.android.tools.desugar_jdk_libs:2.0.4")
+    // Versión estable de desugaring
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.0.4")
 }
