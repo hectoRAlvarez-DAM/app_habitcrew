@@ -11,6 +11,7 @@ class Achievement {
   final int targetValue;
   final String categoryId;
   final int coinReward;
+  final String conditionType;
 
   Achievement({
     required this.id,
@@ -23,6 +24,7 @@ class Achievement {
     required this.targetValue,
     required this.categoryId,
     this.coinReward = 0,
+    this.conditionType = '',
   });
 
   double get progress => (currentValue / targetValue).clamp(0.0, 1.0);
@@ -38,6 +40,7 @@ class Achievement {
     int? targetValue,
     String? categoryId,
     int? coinReward,
+    String? conditionType,
   }) {
     return Achievement(
       id: id ?? this.id,
@@ -50,6 +53,7 @@ class Achievement {
       targetValue: targetValue ?? this.targetValue,
       categoryId: categoryId ?? this.categoryId,
       coinReward: coinReward ?? this.coinReward,
+      conditionType: conditionType ?? this.conditionType,
     );
   }
 }
