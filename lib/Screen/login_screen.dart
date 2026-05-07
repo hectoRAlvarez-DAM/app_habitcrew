@@ -161,6 +161,166 @@ class _LoginScreenState extends State<LoginScreen>
     setState(() => _isLoginMode = !_isLoginMode);
   }
 
+  void _mostrarTerminos() {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1E1E1E),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text(
+          'Términos y Condiciones',
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        content: const SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Última actualización: 30/04/2026\n\n'
+                '1. Aceptación de los términos\n'
+                'Al descargar, acceder o usar la aplicación HabitCrew, aceptas quedar vinculado por estos Términos y Condiciones. Si no estás de acuerdo, no uses la App.\n\n'
+                '2. Descripción del servicio\n'
+                'La App es un gestor de hábitos que permite a los usuarios:\n'
+                '- Registrar y seguir hábitos personales.\n'
+                '- Crear o unirse a grupos para compartir y seguir hábitos colectivos.\n'
+                '- Autenticarse mediante correo electrónico y contraseña (u otros métodos que se integren).\n\n'
+                '3. Registro y cuenta\n'
+                'Debes proporcionar información veraz.\n'
+                'Eres responsable de mantener la confidencialidad de tu contraseña.\n'
+                'Notificarás inmediatamente cualquier uso no autorizado de tu cuenta.\n\n'
+                '4. Conducta del usuario\n'
+                'No debes:\n'
+                '- Usar la App para actividades ilegales, acoso, spam o difamación.\n'
+                '- Intentar acceder a cuentas de otros usuarios o a los sistemas de la App.\n'
+                '- Compartir contraseñas o permitir el acceso no autorizado a grupos.\n\n'
+                '5. Grupos y privacidad dentro de ellos\n'
+                'La información compartida dentro de un grupo (progresos, comentarios, etc.) será visible para los miembros de ese grupo.\n\n'
+                '6. Propiedad intelectual\n'
+                'La App (código, diseño, textos, logos) es propiedad del desarrollador o licenciante.\n'
+                'Los datos que introduces (tus hábitos, registros) te pertenecen a ti, pero al usar la App nos concedes una licencia para operar, almacenar y mostrar dichos datos dentro de la funcionalidad de la App.\n\n'
+                '7. Suspensión y cancelación\n'
+                'Podemos suspender o cancelar tu cuenta si violas estos términos. Tú puedes eliminar tu cuenta desde la configuración de la App o contactándonos.\n\n'
+                '8. Limitación de responsabilidad\n'
+                'La App se proporciona "tal cual", sin garantías de disponibilidad continua ni de que los hábitos te generen resultados específicos. No somos responsables por pérdida de datos, daños indirectos o por decisiones que tomes basadas en tus hábitos registrados.\n\n'
+                '9. Modificaciones\n'
+                'Podemos actualizar estos términos. Notificaremos cambios importantes mediante la App o correo electrónico. El uso continuado implica aceptación.\n\n'
+                '10. Ley aplicable\n'
+                'Estos términos se rigen por las leyes de España.\n\n'
+                '11. Contacto\n'
+                'Para dudas o ejercer tus derechos, escríbenos a: habitcrew_soporte@gmail.com',
+                style: TextStyle(color: Colors.white70, fontSize: 12),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF58CC02),
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+            child: const Text('Cerrar'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _mostrarPoliticaPrivacidad() {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1E1E1E),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text(
+          'Política de Privacidad',
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        content: const SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Última actualización: 30/04/2026\n\n'
+                '1. Responsable del tratamiento\n'
+                'HabitCrew, con correo de contacto: habitcrew_soporte@gmail.com\n\n'
+                '2. ¿Qué datos recogemos?\n'
+                'Datos de identificación y cuenta: Correo electrónico, nombre de usuario, contraseña (almacenada de forma encriptada).\n\n'
+                'Datos de hábitos: Descripción del hábito, frecuencia, registro de cumplimiento (fechas, marcas de completado).\n\n'
+                'Datos de grupos: Nombre del grupo, miembros, mensajes o comentarios dentro del grupo, progresos compartidos.\n\n'
+                'Datos técnicos: Tipo de dispositivo, versión del sistema operativo, identificadores anónimos (para análisis y rendimiento).\n\n'
+                'Opcionalmente: Foto de perfil, notificaciones push (si las solicitas).\n\n'
+                '3. Finalidad del tratamiento\n'
+                'Usamos tus datos para:\n'
+                '- Crear y gestionar tu cuenta y tu sesión.\n'
+                '- Mostrar y sincronizar tus hábitos individuales y grupales.\n'
+                '- Permitir la formación y administración de grupos.\n'
+                '- Enviarte recordatorios (si activas notificaciones).\n'
+                '- Mejorar la App (análisis agregados, corrección de errores).\n'
+                '- Cumplir obligaciones legales.\n\n'
+                '4. Base legal (RGPD u otras)\n'
+                '- Ejecución del contrato: uso de la App y funciones grupales.\n'
+                '- Consentimiento: notificaciones push, análisis opcionales.\n'
+                '- Interés legítimo: mejorar la seguridad y prevenir abusos.\n\n'
+                '5. ¿Compartimos tus datos?\n'
+                '- Dentro de grupos: Tu progreso y nombre de usuario serán visibles para otros miembros del grupo, según la configuración.\n'
+                '- Proveedores de servicios: Almacenamiento en la nube (Firebase, AWS), servicios de correo, analíticas.\n'
+                '- Obligación legal: Si una autoridad competente lo requiere.\n'
+                '- No vendemos tus datos personales a terceros.\n\n'
+                '6. Conservación de datos\n'
+                '- Datos de cuenta y hábitos: mientras mantengas tu cuenta activa.\n'
+                '- Datos de grupos: hasta que abandones el grupo o se elimine el grupo.\n'
+                '- Si eliminas tu cuenta, borramos o anonimizamos tus datos personales en un plazo máximo de 30 días.\n\n'
+                '7. Seguridad\n'
+                'Aplicamos medidas técnicas y organizativas (cifrado en tránsito y reposo, controles de acceso) para proteger tus datos.\n\n'
+                '8. Tus derechos (RGPD)\n'
+                'Puedes:\n'
+                '- Acceder, rectificar o suprimir tus datos.\n'
+                '- Limitar u oponerte a tratamientos concretos.\n'
+                '- Portabilidad de tus datos.\n'
+                '- Retirar el consentimiento.\n'
+                '- Presentar una reclamación ante la autoridad de control.\n\n'
+                'Para ejercerlos, escribe a habitcrew_soporte@gmail.com\n\n'
+                '9. Menores de edad\n'
+                'La App no está dirigida a menores de 13 años.\n\n'
+                '10. Cambios en esta política\n'
+                'Publicaremos cambios aquí y te avisaremos mediante la App o correo si son sustanciales.',
+                style: TextStyle(color: Colors.white70, fontSize: 12),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF58CC02),
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+            child: const Text('Cerrar'),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _mostrarDialogRecuperarContrasenya() {
     final emailController = TextEditingController(
       text: _emailController.text.trim(),
@@ -197,8 +357,10 @@ class _LoginScreenState extends State<LoginScreen>
                   hintStyle: TextStyle(color: Colors.white38),
                   prefixIcon: Icon(Icons.email, color: Color(0xFF58CC02)),
                   border: InputBorder.none,
-                  contentPadding:
-                      EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  contentPadding: EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 14,
+                  ),
                 ),
               ),
             ),
@@ -207,8 +369,7 @@ class _LoginScreenState extends State<LoginScreen>
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child:
-                const Text('Cancelar', style: TextStyle(color: Colors.grey)),
+            child: const Text('Cancelar', style: TextStyle(color: Colors.grey)),
           ),
           ElevatedButton(
             onPressed: () async {
@@ -221,16 +382,14 @@ class _LoginScreenState extends State<LoginScreen>
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
                     content: Text(
-                        '📧 Correo enviado. Revisa tu bandeja de entrada.'),
+                      '📧 Correo enviado. Revisa tu bandeja de entrada.',
+                    ),
                     backgroundColor: Color(0xFF58CC02),
                   ),
                 );
               } else {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(error),
-                    backgroundColor: Colors.red,
-                  ),
+                  SnackBar(content: Text(error), backgroundColor: Colors.red),
                 );
               }
             },
@@ -238,7 +397,8 @@ class _LoginScreenState extends State<LoginScreen>
               backgroundColor: const Color(0xFF58CC02),
               foregroundColor: Colors.white,
               shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10)),
+                borderRadius: BorderRadius.circular(10),
+              ),
             ),
             child: const Text('Enviar correo'),
           ),
@@ -527,7 +687,8 @@ class _LoginScreenState extends State<LoginScreen>
                                                 alignment:
                                                     Alignment.centerRight,
                                                 child: GestureDetector(
-                                                  onTap: () => _mostrarDialogRecuperarContrasenya(),
+                                                  onTap: () =>
+                                                      _mostrarDialogRecuperarContrasenya(),
                                                   child: Padding(
                                                     padding:
                                                         EdgeInsets.symmetric(
@@ -587,9 +748,13 @@ class _LoginScreenState extends State<LoginScreen>
                                                   : 'Crear Cuenta',
                                               onPressed: _handleSubmit,
                                               isLoading: _isLoading,
-                                              backgroundColor: const Color(
-                                                0xFF58CC02,
-                                              ),
+                                              backgroundColor:
+                                                  const Color.fromARGB(
+                                                    255,
+                                                    51,
+                                                    112,
+                                                    7,
+                                                  ),
                                               isUltraSmall: isUltraSmallScreen,
                                             ),
 
@@ -709,26 +874,78 @@ class _LoginScreenState extends State<LoginScreen>
                                                                 ? 4.0
                                                                 : 6.0),
                                                     ),
-                                                    Text(
-                                                      'Al continuar, aceptas nuestros Términos y Política de Privacidad',
-                                                      textAlign:
-                                                          TextAlign.center,
-                                                      style: TextStyle(
-                                                        color: const Color(
-                                                          0xFF388E3C,
+                                                    Row(
+                                                      mainAxisAlignment:
+                                                          MainAxisAlignment
+                                                              .center,
+                                                      children: [
+                                                        GestureDetector(
+                                                          onTap: () =>
+                                                              _mostrarTerminos(),
+                                                          child: Text(
+                                                            'Términos',
+                                                            style: TextStyle(
+                                                              color:
+                                                                  const Color(
+                                                                    0xFF58CC02,
+                                                                  ),
+                                                              fontSize:
+                                                                  isUltraSmallScreen
+                                                                  ? 6.0
+                                                                  : (isMobile
+                                                                        ? 8.0
+                                                                        : 9.0),
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .w700,
+                                                              decoration:
+                                                                  TextDecoration
+                                                                      .underline,
+                                                            ),
+                                                          ),
                                                         ),
-                                                        fontSize:
-                                                            isUltraSmallScreen
-                                                            ? 6.0
-                                                            : (isMobile
-                                                                  ? 8.0
-                                                                  : 9.0),
-                                                        fontWeight:
-                                                            FontWeight.w500,
-                                                      ),
-                                                      maxLines: 2,
-                                                      overflow:
-                                                          TextOverflow.ellipsis,
+                                                        Text(
+                                                          ' y ',
+                                                          style: TextStyle(
+                                                            color: const Color(
+                                                              0xFF388E3C,
+                                                            ),
+                                                            fontSize:
+                                                                isUltraSmallScreen
+                                                                ? 6.0
+                                                                : (isMobile
+                                                                      ? 8.0
+                                                                      : 9.0),
+                                                            fontWeight:
+                                                                FontWeight.w500,
+                                                          ),
+                                                        ),
+                                                        GestureDetector(
+                                                          onTap: () =>
+                                                              _mostrarPoliticaPrivacidad(),
+                                                          child: Text(
+                                                            'Política de Privacidad',
+                                                            style: TextStyle(
+                                                              color:
+                                                                  const Color(
+                                                                    0xFF58CC02,
+                                                                  ),
+                                                              fontSize:
+                                                                  isUltraSmallScreen
+                                                                  ? 6.0
+                                                                  : (isMobile
+                                                                        ? 8.0
+                                                                        : 9.0),
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .w700,
+                                                              decoration:
+                                                                  TextDecoration
+                                                                      .underline,
+                                                            ),
+                                                          ),
+                                                        ),
+                                                      ],
                                                     ),
                                                   ],
                                                 ),
@@ -822,16 +1039,10 @@ class _LoginScreenState extends State<LoginScreen>
         borderRadius: BorderRadius.circular(isUltraSmall ? 15.0 : 20.0),
         boxShadow: [
           BoxShadow(
-            color: backgroundColor.withOpacity(0.8),
-            blurRadius: isUltraSmall ? 15.0 : 25.0,
-            spreadRadius: isUltraSmall ? 2.0 : 3.0,
-            offset: const Offset(0, 6),
-          ),
-          BoxShadow(
-            color: Colors.white.withOpacity(0.5),
-            blurRadius: 5,
-            spreadRadius: 1,
-            offset: const Offset(0, -2),
+            color: backgroundColor.withOpacity(0.4),
+            blurRadius: isUltraSmall ? 8.0 : 12.0,
+            spreadRadius: isUltraSmall ? 1.0 : 1.5,
+            offset: const Offset(0, 4),
           ),
         ],
       ),
@@ -842,6 +1053,7 @@ class _LoginScreenState extends State<LoginScreen>
           onPressed: onPressed,
           isLoading: isLoading,
           backgroundColor: backgroundColor,
+          isGradient: false,
         ),
       ),
     );
@@ -852,33 +1064,12 @@ class _LoginScreenState extends State<LoginScreen>
     required VoidCallback onPressed,
     bool isUltraSmall = false,
   }) {
-    return Container(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(isUltraSmall ? 15.0 : 20.0),
-        border: Border.all(
-          color: const Color(0xFF58CC02),
-          width: isUltraSmall ? 2.0 : 2.5,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF58CC02).withOpacity(0.5),
-            blurRadius: isUltraSmall ? 12.0 : 20.0,
-            spreadRadius: isUltraSmall ? 1.0 : 2.0,
-            offset: const Offset(0, 5),
-          ),
-        ],
-      ),
-      child: SizedBox(
-        height: isUltraSmall ? 40.0 : null,
-        child: DuolingoButton(
-          text: text,
-          onPressed: onPressed,
-          backgroundColor: Colors.black,
-          textColor: const Color(0xFF58CC02),
-          isGradient: false,
-          isOutlined: true,
-        ),
-      ),
+    return _buildCompactButton(
+      text: text,
+      onPressed: onPressed,
+      isLoading: false,
+      backgroundColor: const Color.fromARGB(255, 52, 116, 7),
+      isUltraSmall: isUltraSmall,
     );
   }
 }
