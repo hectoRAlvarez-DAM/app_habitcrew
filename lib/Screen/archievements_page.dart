@@ -97,19 +97,10 @@ class _AchievementsPageState extends State<AchievementsPage> {
     CoinService.instance.coinsNotifier.value += achievement.coinReward;
     setState(() => _claimedIds.add(achievement.id));
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            const Icon(Icons.monetization_on, color: Color(0xFFFFD700)),
-            const SizedBox(width: 8),
-            Text('+${achievement.coinReward} monedas reclamadas'),
-          ],
-        ),
-        backgroundColor: const Color(0xFF22C55E),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      ),
+    AchievementUnlockOverlay.show(
+      context,
+      achievement,
+      label: '¡Recompensa reclamada!',
     );
   }
 
@@ -129,19 +120,23 @@ class _AchievementsPageState extends State<AchievementsPage> {
     CoinService.instance.coinsNotifier.value += earned;
     setState(() => _claimedIds.addAll(ids));
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            const Icon(Icons.monetization_on, color: Color(0xFFFFD700)),
-            const SizedBox(width: 8),
-            Text('+$earned monedas reclamadas (${unclaimed.length} logros)'),
-          ],
-        ),
-        backgroundColor: const Color(0xFF22C55E),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      ),
+
+    final summary = Achievement(
+      id: '_summary',
+      title: '${unclaimed.length} logros reclamados',
+      description: 'Has recogido todas tus recompensas pendientes',
+      icon: Icons.redeem,
+      isUnlocked: true,
+      currentValue: earned,
+      targetValue: earned,
+      categoryId: '0',
+      coinReward: earned,
+      conditionType: '',
+    );
+    AchievementUnlockOverlay.show(
+      context,
+      summary,
+      label: '¡Recompensas reclamadas!',
     );
   }
 
