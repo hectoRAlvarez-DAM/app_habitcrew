@@ -1,6 +1,7 @@
 // Widgets/glassmorphism_card.dart
 import 'package:flutter/material.dart';
 import 'dart:ui';
+import 'package:app_habitcrew/Widgets/contrast_mode.dart';
 
 class GlassmorphismCard extends StatelessWidget {
   final Widget child;
@@ -18,25 +19,51 @@ class GlassmorphismCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isContrast = ContrastMode.of(context);
+
+    if (isContrast) {
+      // Modo contraste: tarjeta blanca limpia, sin blur ni sombra oscura
+      return GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: padding ?? const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: color ?? Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: const Color(0xFFDDDDDD)),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.06),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: child,
+        ),
+      );
+    }
+
+    // Modo normal: glassmorphism original
     return GestureDetector(
       onTap: onTap,
       child: Container(
         padding: padding ?? const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: color ?? Colors.white.withOpacity(0.06),
+          color: color ?? Colors.white.withValues(alpha: 0.06),
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: Colors.white.withOpacity(0.12),
+            color: Colors.white.withValues(alpha: 0.12),
             width: 1,
           ),
           boxShadow: [
             BoxShadow(
-              color: const Color(0xFF22C55E).withOpacity(0.06),
+              color: const Color(0xFF22C55E).withValues(alpha: 0.06),
               blurRadius: 20,
               offset: const Offset(0, 10),
             ),
             BoxShadow(
-              color: Colors.black.withOpacity(0.6),
+              color: Colors.black.withValues(alpha: 0.6),
               blurRadius: 12,
               offset: const Offset(0, 5),
             ),
@@ -47,7 +74,7 @@ class GlassmorphismCard extends StatelessWidget {
           child: BackdropFilter(
             filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
             child: Container(
-              color: Colors.white.withOpacity(0.02),
+              color: Colors.white.withValues(alpha: 0.02),
               child: child,
             ),
           ),
@@ -71,6 +98,7 @@ class GlassmorphismSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isContrast = ContrastMode.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -81,17 +109,19 @@ class GlassmorphismSection extends StatelessWidget {
             children: [
               Text(
                 titulo,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
-                  color: Color(0xFFE6F7EA), // Texto claro verde suave
+                  color: isContrast
+                      ? const Color(0xFF111111)
+                      : const Color(0xFFE6F7EA),
                 ),
               ),
               if (onVerTodos != null)
                 TextButton(
                   onPressed: onVerTodos,
                   style: TextButton.styleFrom(
-                    foregroundColor: const Color(0xFF7EE07A),
+                    foregroundColor: const Color(0xFF22C55E),
                   ),
                   child: const Text('Ver todos'),
                 ),

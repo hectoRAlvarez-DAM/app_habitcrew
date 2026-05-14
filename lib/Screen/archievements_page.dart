@@ -458,10 +458,10 @@ class _AchievementsPageState extends State<AchievementsPage> {
                       children: [
                         Text(
                           category.name,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
-                            color: Colors.white,
+                            color: t.textPrimary,
                           ),
                         ),
                         const SizedBox(height: 4),
@@ -532,7 +532,7 @@ class _AchievementsPageState extends State<AchievementsPage> {
                           achievement.title,
                           style: TextStyle(
                             fontWeight: FontWeight.w600,
-                            color: achievement.isUnlocked ? t.textPrimary : t.textHint,
+                            color: achievement.isUnlocked ? t.textPrimary : t.textMuted,
                           ),
                         ),
                       ),

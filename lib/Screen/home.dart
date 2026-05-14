@@ -890,15 +890,14 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
                               padding: const EdgeInsets.symmetric(
                                   horizontal: 7, vertical: 2),
                               decoration: BoxDecoration(
-                                color: Colors.white.withValues(alpha: 0.06),
+                                color: t.chipBg,
                                 borderRadius: BorderRadius.circular(6),
                               ),
                               child: Text(
                                 habit.frecuencia,
                                 style: TextStyle(
                                   fontSize: 10,
-                                  color:
-                                      Colors.white.withValues(alpha: 0.4),
+                                  color: t.textMuted,
                                 ),
                               ),
                             ),
@@ -1154,7 +1153,7 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
               width: 40,
               height: 40,
               decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.04),
+                color: t.cardBg,
                 borderRadius: BorderRadius.circular(10),
               ),
               child: const Center(

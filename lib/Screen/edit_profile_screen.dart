@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'package:app_habitcrew/Widgets/animated_background.dart';
 import 'package:flutter/material.dart';
+import 'package:app_habitcrew/Widgets/contrast_mode.dart';
+import 'package:app_habitcrew/Widgets/app_theme.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:image_picker/image_picker.dart';
@@ -29,6 +31,10 @@ class EditProfileScreen extends StatefulWidget {
 }
 
 class _EditProfileScreenState extends State<EditProfileScreen> {
+
+  AppTheme get _t => AppTheme.fromContrast(ContrastMode.of(context));
+
+
   final _formKey = GlobalKey<FormState>();
   late TextEditingController _nombreController;
   late TextEditingController _bioController;
@@ -141,6 +147,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   }
 
   void _mostrarOpcionesFoto() {
+    final t = _t;
     showModalBottomSheet(
       context: context,
       backgroundColor: const Color(0xFF1E1E2E),
@@ -152,9 +159,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Foto de perfil',
+            Text('Foto de perfil',
                 style: TextStyle(
-                    color: Colors.white,
+                    color: t.textPrimary,
                     fontSize: 16,
                     fontWeight: FontWeight.bold)),
             const SizedBox(height: 16),
@@ -200,6 +207,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   // ─── Banner ──────────────────────────────────────────────────────
 
   void _mostrarSelectorBanner() {
+    final t = _t;
     // Banners: default + cofre + tienda comprados
     final cofreNames = _bannersCofre.map((i) => i['nombre'] as String?).toList();
     final shopNames = ProfileThemeService.shopBanners
@@ -224,9 +232,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('Elige tu banner',
+              Text('Elige tu banner',
                   style: TextStyle(
-                      color: Colors.white,
+                      color: t.textPrimary,
                       fontSize: 16,
                       fontWeight: FontWeight.bold)),
               const SizedBox(height: 16),
@@ -267,19 +275,19 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             if (nombre == 'Beta')
-                              const Text('BETA',
+                              Text('BETA',
                                   style: TextStyle(
-                                      color: Colors.white54,
+                                      color: t.textMuted,
                                       fontSize: 12,
                                       fontWeight: FontWeight.w900,
                                       letterSpacing: 3))
                             else if (theme?.emoji.isNotEmpty == true)
                               Text(theme!.emoji,
-                                  style: const TextStyle(fontSize: 16)),
+                                  style: TextStyle(fontSize: 16)),
                             Text(
                               nombre ?? 'Default',
-                              style: const TextStyle(
-                                  color: Colors.white70, fontSize: 9),
+                              style: TextStyle(
+                                  color: t.textSecondary, fontSize: 9),
                               textAlign: TextAlign.center,
                             ),
                           ],
@@ -301,6 +309,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isContrast = ContrastMode.of(context);
+    final t = AppTheme.fromContrast(isContrast);
     return AnimatedBackground(
       child: SafeArea(
         child: Scaffold(
@@ -368,7 +378,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                                               ?.emoji ??
                                           '',
                                       style:
-                                          const TextStyle(fontSize: 80),
+                                          TextStyle(fontSize: 80),
                                     ),
                                   ),
                                 ),
@@ -384,16 +394,16 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                                         Colors.black.withValues(alpha: 0.5),
                                     borderRadius: BorderRadius.circular(20),
                                   ),
-                                  child: const Row(
+                                  child: Row(
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
                                       Icon(Icons.edit,
-                                          color: Colors.white70,
+                                          color: t.textSecondary,
                                           size: 12),
                                       SizedBox(width: 4),
                                       Text('Banner',
                                           style: TextStyle(
-                                              color: Colors.white70,
+                                              color: t.textSecondary,
                                               fontSize: 11)),
                                     ],
                                   ),
@@ -413,7 +423,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                                       borderRadius:
                                           BorderRadius.circular(10),
                                     ),
-                                    child: const Icon(Icons.arrow_back,
+                                    child: Icon(Icons.arrow_back,
                                         color: Colors.white, size: 20),
                                   ),
                                 ),
@@ -475,7 +485,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                                       border: Border.all(
                                           color: Colors.white, width: 2),
                                     ),
-                                    child: const Icon(Icons.camera_alt,
+                                    child: Icon(Icons.camera_alt,
                                         color: Colors.white, size: 13),
                                   ),
                                 ),
@@ -499,8 +509,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                         const SizedBox(height: 8),
                         TextFormField(
                           controller: _nombreController,
-                          style: const TextStyle(
-                              color: Colors.white, fontSize: 15),
+                          style: TextStyle(
+                              color: _t.textPrimary, fontSize: 15),
                           maxLength: 30,
                           decoration: _inputDeco('Tu nombre'),
                           validator: (v) {
@@ -518,8 +528,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                         const SizedBox(height: 8),
                         TextFormField(
                           controller: _bioController,
-                          style: const TextStyle(
-                              color: Colors.white, fontSize: 15),
+                          style: TextStyle(
+                              color: _t.textPrimary, fontSize: 15),
                           maxLength: 150,
                           maxLines: 3,
                           decoration: _inputDeco(
@@ -551,7 +561,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                                         color: Colors.white,
                                         strokeWidth: 2),
                                   )
-                                : const Text(
+                                : Text(
                                     'Guardar cambios',
                                     style: TextStyle(
                                         fontSize: 15,
@@ -593,6 +603,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   }
 
   Widget _buildAvatarFallback() {
+    final t = _t;
     return Container(
       color: const Color(0xFF5865F2),
       child: Center(
@@ -600,8 +611,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           widget.nombreActual.isNotEmpty
               ? widget.nombreActual[0].toUpperCase()
               : '?',
-          style: const TextStyle(
-            color: Colors.white,
+          style: TextStyle(
+            color: t.textPrimary,
             fontSize: 38,
             fontWeight: FontWeight.bold,
           ),
@@ -611,10 +622,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   }
 
   Widget _buildLabel(String text) {
+    final t = _t;
     return Text(
       text,
-      style: const TextStyle(
-        color: Colors.white54,
+      style: TextStyle(
+        color: t.textMuted,
         fontSize: 11,
         fontWeight: FontWeight.bold,
         letterSpacing: 1.2,
@@ -623,23 +635,22 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   }
 
   InputDecoration _inputDeco(String hint) {
+    final t = _t;
     return InputDecoration(
       hintText: hint,
       hintStyle:
-          TextStyle(color: Colors.white.withValues(alpha: 0.25)),
+          TextStyle(color: t.textMuted),
       filled: true,
-      fillColor: Colors.white.withValues(alpha: 0.05),
+      fillColor: t.inputBg,
       counterStyle: TextStyle(
-          color: Colors.white.withValues(alpha: 0.3), fontSize: 11),
+          color: t.textMuted, fontSize: 11),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide:
-            BorderSide(color: Colors.white.withValues(alpha: 0.1)),
+        borderSide: BorderSide(color: t.cardBorder),
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide:
-            BorderSide(color: Colors.white.withValues(alpha: 0.1)),
+        borderSide: BorderSide(color: t.cardBorder),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
@@ -678,8 +689,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             Icon(icon, color: color, size: 20),
             const SizedBox(width: 12),
             Text(label,
-                style: const TextStyle(
-                    color: Colors.white, fontSize: 14)),
+                style: TextStyle(
+                    color: _t.textPrimary, fontSize: 14)),
           ],
         ),
       ),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'dart:math' as math;
+import 'package:app_habitcrew/Widgets/contrast_mode.dart';
 
 // CLIPPER PARA LOS ARCOS (Forma de montaña redondeada)
 class PsArcClipper extends CustomClipper<Path> {
@@ -54,6 +55,7 @@ class BottomMenu extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isContrast = ContrastMode.of(context);
     final double bottomPadding = MediaQuery.of(context).padding.bottom;
     final double screenWidth = MediaQuery.of(context).size.width;
     
@@ -85,7 +87,7 @@ class BottomMenu extends StatelessWidget {
             child: Container(
               height: totalHeight,
               width: double.infinity,
-              color: const Color(0xFF222222).withOpacity(0.9),
+              color: isContrast ? const Color(0xFFEEEEEE) : const Color(0xFF222222).withValues(alpha: 0.9),
             ),
           ),
 
@@ -98,7 +100,7 @@ class BottomMenu extends StatelessWidget {
             child: Container(
               height: totalHeight,
               width: double.infinity,
-              color: const Color(0xFF050505),
+              color: isContrast ? const Color(0xFFFFFFFF) : const Color(0xFF050505),
             ),
           ),
 
@@ -112,10 +114,10 @@ class BottomMenu extends StatelessWidget {
               width: 32,
               height: 2.2,
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: isContrast ? const Color(0xFF22C55E) : Colors.white,
                 borderRadius: BorderRadius.circular(10),
                 boxShadow: [
-                  BoxShadow(color: Colors.white.withOpacity(0.6), blurRadius: 6),
+                  BoxShadow(color: isContrast ? const Color(0xFF22C55E).withValues(alpha: 0.4) : Colors.white.withValues(alpha: 0.6), blurRadius: 6),
                 ],
               ),
             ),
@@ -145,7 +147,7 @@ class BottomMenu extends StatelessWidget {
                         color: Colors.transparent, 
                         child: Icon(
                           _menuItems[index]['icon'],
-                          color: isActive ? Colors.white : Colors.white24,
+                          color: isActive ? (isContrast ? const Color(0xFF22C55E) : Colors.white) : (isContrast ? const Color(0xFF999999) : Colors.white24),
                           size: 26, 
                         ),
                       ),
@@ -168,8 +170,8 @@ class BottomMenu extends StatelessWidget {
                 child: Text(
                   _menuItems[currentIndex]['label'],
                   key: ValueKey(currentIndex),
-                  style: const TextStyle(
-                    color: Colors.white,
+                  style: TextStyle(
+                    color: isContrast ? const Color(0xFF22C55E) : Colors.white,
                     fontSize: 10,
                     fontWeight: FontWeight.bold,
                     letterSpacing: 1.5,

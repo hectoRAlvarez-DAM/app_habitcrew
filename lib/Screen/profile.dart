@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:app_habitcrew/Widgets/animated_background.dart';
 import 'package:app_habitcrew/Widgets/contrast_mode.dart';
+import 'package:app_habitcrew/Widgets/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -22,6 +23,8 @@ class Profile extends StatefulWidget {
 class _ProfileState extends State<Profile> {
   String _userName = '';
   String _userEmail = '';
+
+  AppTheme get _t => AppTheme.fromContrast(ContrastMode.of(context));
   String _miembroDesde = '—';
   int _totalCompletados = 0;
   String _bio = '';
@@ -272,7 +275,7 @@ class _ProfileState extends State<Profile> {
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
                         border: Border.all(
-                          color: isContrast ? Colors.white : Colors.white,
+                          color: isContrast ? const Color(0xFF333333) : Colors.white,
                           width: 4,
                         ),
                         boxShadow: [
@@ -667,8 +670,8 @@ class _ProfileState extends State<Profile> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('Selecciona insignias (máx. 3)',
-                  style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+              Text('Selecciona insignias (máx. 3)',
+                  style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
               const SizedBox(height: 4),
               const Text('Toca para equipar o desequipar',
                   style: TextStyle(color: Colors.white38, fontSize: 12)),
@@ -824,7 +827,7 @@ class _ProfileState extends State<Profile> {
         onPressed: onTap ?? () {},
         style: ElevatedButton.styleFrom(
           backgroundColor: isContrast ? const Color(0xFFF5F5F5) : Colors.white.withValues(alpha: 0.1),
-          foregroundColor: isContrast ? const Color(0xFF333333) : Colors.white,
+          foregroundColor: _t.textPrimary,
           elevation: 0,
           padding: const EdgeInsets.symmetric(vertical: 16),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),

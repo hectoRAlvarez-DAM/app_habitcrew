@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:app_habitcrew/Widgets/contrast_mode.dart';
+import 'package:app_habitcrew/Widgets/app_theme.dart';
 import 'package:app_habitcrew/Widgets/animated_background.dart';
 import 'package:app_habitcrew/Widgets/glassmorphism_card.dart';
 import 'package:app_habitcrew/Screen/models/habit.dart';
@@ -16,6 +18,7 @@ class NotificationSettingsScreen extends StatefulWidget {
 
 class _NotificationSettingsScreenState
     extends State<NotificationSettingsScreen> {
+
   final NotificationService _notifService = NotificationService();
 
   bool _activa = false;
@@ -106,6 +109,8 @@ class _NotificationSettingsScreenState
 
   @override
   Widget build(BuildContext context) {
+    final isContrast = ContrastMode.of(context);
+    final t = AppTheme.fromContrast(isContrast);
     return Scaffold(
       backgroundColor: Colors.transparent,
       body: AnimatedBackground(
@@ -123,12 +128,12 @@ class _NotificationSettingsScreenState
                       child: Container(
                         padding: const EdgeInsets.all(8),
                         decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.08),
+                          color: t.cardBg,
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(
-                              color: Colors.white.withValues(alpha: 0.1)),
+                              color: t.cardBg),
                         ),
-                        child: const Icon(Icons.arrow_back,
+                        child: Icon(Icons.arrow_back,
                             color: Colors.white, size: 20),
                       ),
                     ),
@@ -137,7 +142,7 @@ class _NotificationSettingsScreenState
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text(
+                          Text(
                             '🔔 Notificaciones',
                             style: TextStyle(
                               fontSize: 22,
@@ -147,8 +152,8 @@ class _NotificationSettingsScreenState
                           ),
                           Text(
                             '${widget.habit.emoji} ${widget.habit.nombre}',
-                            style: const TextStyle(
-                                color: Colors.white54, fontSize: 13),
+                            style: TextStyle(
+                                color: t.textMuted, fontSize: 13),
                           ),
                         ],
                       ),
@@ -165,13 +170,13 @@ class _NotificationSettingsScreenState
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Column(
+                        Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
                               'Recordatorio diario',
                               style: TextStyle(
-                                color: Colors.white,
+                                color: t.textPrimary,
                                 fontSize: 16,
                                 fontWeight: FontWeight.w600,
                               ),
@@ -180,14 +185,14 @@ class _NotificationSettingsScreenState
                             Text(
                               'Recibe un aviso cada día',
                               style: TextStyle(
-                                  color: Colors.white38, fontSize: 13),
+                                  color: t.textMuted, fontSize: 13),
                             ),
                           ],
                         ),
                         Switch(
                           value: _activa,
                           onChanged: (v) => setState(() => _activa = v),
-                          activeColor: const Color(0xFF22C55E),
+                          activeThumbColor: const Color(0xFF22C55E),
                         ),
                       ],
                     ),
@@ -207,13 +212,13 @@ class _NotificationSettingsScreenState
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          const Column(
+                          Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
                                 'Hora del recordatorio',
                                 style: TextStyle(
-                                  color: Colors.white,
+                                  color: t.textPrimary,
                                   fontSize: 16,
                                   fontWeight: FontWeight.w600,
                                 ),
@@ -222,7 +227,7 @@ class _NotificationSettingsScreenState
                               Text(
                                 'Toca para cambiar la hora',
                                 style: TextStyle(
-                                    color: Colors.white38, fontSize: 13),
+                                    color: t.textMuted, fontSize: 13),
                               ),
                             ],
                           ),
@@ -239,7 +244,7 @@ class _NotificationSettingsScreenState
                             ),
                             child: Text(
                               _formatHora(),
-                              style: const TextStyle(
+                              style: TextStyle(
                                 color: Color(0xFF22C55E),
                                 fontSize: 22,
                                 fontWeight: FontWeight.bold,
@@ -258,8 +263,8 @@ class _NotificationSettingsScreenState
                     padding: const EdgeInsets.symmetric(horizontal: 4),
                     child: Text(
                       'Recibirás un recordatorio cada día a las ${_formatHora()} para completar "${widget.habit.nombre}".',
-                      style: const TextStyle(
-                          color: Colors.white38, fontSize: 12),
+                      style: TextStyle(
+                          color: t.textMuted, fontSize: 12),
                     ),
                   ),
                 ],
@@ -285,7 +290,7 @@ class _NotificationSettingsScreenState
                             height: 20,
                             child: CircularProgressIndicator(
                                 color: Colors.white, strokeWidth: 2))
-                        : const Text('Guardar configuración',
+                        : Text('Guardar configuración',
                             style: TextStyle(
                                 fontSize: 15,
                                 fontWeight: FontWeight.bold)),

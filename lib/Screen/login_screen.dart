@@ -344,9 +344,9 @@ class _LoginScreenState extends State<LoginScreen>
             const SizedBox(height: 16),
             Container(
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.08),
+                color: Colors.white.withValues(alpha: 0.08),
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.white.withOpacity(0.15)),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
               ),
               child: TextField(
                 controller: emailController,
@@ -518,7 +518,7 @@ class _LoginScreenState extends State<LoginScreen>
                       center: Alignment.center,
                       radius: 0.8,
                       colors: [
-                        Colors.white.withOpacity(0.1),
+                        Colors.white.withValues(alpha: 0.1),
                         Colors.transparent,
                       ],
                       stops: const [0.0, 1.0],
@@ -589,7 +589,7 @@ class _LoginScreenState extends State<LoginScreen>
                                           shadows: [
                                             Shadow(
                                               blurRadius: 10,
-                                              color: Colors.black.withOpacity(
+                                              color: Colors.black.withValues(alpha: 
                                                 0.5,
                                               ),
                                               offset: const Offset(2, 2),
@@ -614,7 +614,7 @@ class _LoginScreenState extends State<LoginScreen>
                                           shadows: [
                                             Shadow(
                                               blurRadius: 5,
-                                              color: Colors.white.withOpacity(
+                                              color: Colors.white.withValues(alpha: 
                                                 0.3,
                                               ),
                                               offset: const Offset(1, 1),
@@ -719,7 +719,7 @@ class _LoginScreenState extends State<LoginScreen>
                                                           Shadow(
                                                             blurRadius: 3,
                                                             color: Colors.white
-                                                                .withOpacity(
+                                                                .withValues(alpha: 
                                                                   0.5,
                                                                 ),
                                                             offset:
@@ -789,7 +789,7 @@ class _LoginScreenState extends State<LoginScreen>
                                                 ),
                                                 decoration: BoxDecoration(
                                                   color: Colors.black
-                                                      .withOpacity(0.7),
+                                                      .withValues(alpha: 0.7),
                                                   borderRadius:
                                                       BorderRadius.circular(
                                                         isUltraSmallScreen
@@ -799,14 +799,14 @@ class _LoginScreenState extends State<LoginScreen>
                                                   border: Border.all(
                                                     color: const Color(
                                                       0xFF58CC02,
-                                                    ).withOpacity(0.3),
+                                                    ).withValues(alpha: 0.3),
                                                     width: 1.5,
                                                   ),
                                                   boxShadow: [
                                                     BoxShadow(
                                                       color: const Color(
                                                         0xFF58CC02,
-                                                      ).withOpacity(0.2),
+                                                      ).withValues(alpha: 0.2),
                                                       blurRadius: 10,
                                                       spreadRadius: 2,
                                                     ),
@@ -1039,7 +1039,7 @@ class _LoginScreenState extends State<LoginScreen>
         borderRadius: BorderRadius.circular(isUltraSmall ? 15.0 : 20.0),
         boxShadow: [
           BoxShadow(
-            color: backgroundColor.withOpacity(0.4),
+            color: backgroundColor.withValues(alpha: 0.4),
             blurRadius: isUltraSmall ? 8.0 : 12.0,
             spreadRadius: isUltraSmall ? 1.0 : 1.5,
             offset: const Offset(0, 4),
@@ -1119,7 +1119,7 @@ class WavePainter extends CustomPainter {
           final glowOpacity = wave.opacity * (0.6 - i * 0.2);
           if (glowOpacity <= 0) continue;
 
-          paint.color = Colors.white.withOpacity(glowOpacity);
+          paint.color = Colors.white.withValues(alpha: glowOpacity);
           paint.strokeWidth = wave.width * 2 - i * (wave.width * 0.6);
 
           canvas.drawCircle(wave.center, wave.radius + i * 4, paint);
@@ -1127,13 +1127,13 @@ class WavePainter extends CustomPainter {
       }
 
       // ONDA PRINCIPAL
-      paint.color = wave.color.withOpacity(wave.opacity);
+      paint.color = wave.color.withValues(alpha: wave.opacity);
       paint.strokeWidth = wave.width;
       canvas.drawCircle(wave.center, wave.radius, paint);
 
       // EFECTO DE RESPLANDOR INTERNO
       if (wave.opacity > 0.5) {
-        paint.color = Colors.white.withOpacity(wave.opacity * 0.3);
+        paint.color = Colors.white.withValues(alpha: wave.opacity * 0.3);
         paint.strokeWidth = wave.width * 0.5;
         canvas.drawCircle(wave.center, wave.radius * 0.8, paint);
       }
@@ -1141,7 +1141,7 @@ class WavePainter extends CustomPainter {
       // PUNTO CENTRAL BRILLANTE
       if (wave.opacity > 0.7) {
         paint.style = PaintingStyle.fill;
-        paint.color = Colors.white.withOpacity(wave.opacity * 0.8);
+        paint.color = Colors.white.withValues(alpha: wave.opacity * 0.8);
         canvas.drawCircle(wave.center, 3, paint);
         paint.style = PaintingStyle.stroke;
       }
