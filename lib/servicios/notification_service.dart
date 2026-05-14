@@ -29,7 +29,7 @@ class NotificationService {
 
     const initSettings = InitializationSettings(android: androidSettings);
 
-    await _plugin.initialize(initSettings);
+    await _plugin.initialize(settings: initSettings);
     _initialized = true;
   }
 
@@ -43,7 +43,7 @@ class NotificationService {
   }) async {
     if (kIsWeb || !_initialized) return;
 
-    await _plugin.cancel(id);
+    await _plugin.cancel(id: id);
 
     final ahora = tz.TZDateTime.now(tz.local);
     var scheduledDate = tz.TZDateTime(
@@ -72,14 +72,12 @@ class NotificationService {
     const details = NotificationDetails(android: androidDetails);
 
     await _plugin.zonedSchedule(
-      id,
-      '$emoji $nombreHabito',
-      '¡No olvides completar tu hábito de hoy!',
-      scheduledDate,
-      details,
+      id: id,
+      title: '$emoji $nombreHabito',
+      body: '¡No olvides completar tu hábito de hoy!',
+      scheduledDate: scheduledDate,
+      notificationDetails: details,
       androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-      uiLocalNotificationDateInterpretation:
-          UILocalNotificationDateInterpretation.absoluteTime,
       matchDateTimeComponents: DateTimeComponents.time,
     );
   }
@@ -87,7 +85,7 @@ class NotificationService {
   /// Cancela la notificación de un hábito.
   Future<void> cancelarNotificacion(int id) async {
     if (kIsWeb || !_initialized) return;
-    await _plugin.cancel(id);
+    await _plugin.cancel(id: id);
   }
 
   /// Cancela todas las notificaciones.

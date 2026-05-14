@@ -12,44 +12,40 @@ class AchievementSeeder {
 
   bool _done = false;
 
-  /// Comprueba si hay logros nuevos que falten en Firestore y los añade.
-  /// Devuelve true si sembró algo nuevo (para que el caller invalide su caché).
-  Future<bool> seedIfNeeded() async {
-    if (_done) return false;
+  /// Comprueba si ya se sembró y, si no, ejecuta la siembra.
+  Future<void> seedIfNeeded() async {
+    if (_done) return;
     try {
-      final snap = await _db.collection('logros_catalogo').get();
-      final existingIds = snap.docs.map((d) => d.id).toSet();
-      final expectedIds = AchievementDefinition.allAchievements.map((a) => a.id).toSet();
-
-      _done = true;
-      if (!existingIds.containsAll(expectedIds)) {
-        await _seedMissing(existingIds);
-        return true;
+      final snap = await _db.collection('logros_categorias').limit(1).get();
+      if (snap.docs.isNotEmpty) {
+        _done = true;
+        return;
       }
-      return false;
-    } catch (_) {
-      return false;
-    }
+      await _seed();
+      _done = true;
+    } catch (_) {}
   }
 
-  Future<void> _seedMissing(Set<String> existingIds) async {
+  Future<void> _seed() async {
+    // Firestore WriteBatch soporta hasta 500 ops; 72 logros + 8 categorías = 80.
     final batch = _db.batch();
 
-    // Categorías (upsert por si acaso están vacías)
+    // Categorías
     for (int i = 0; i < AchievementDefinition.categoryMeta.length; i++) {
       final (id, name, icon) = AchievementDefinition.categoryMeta[i];
       batch.set(
         _db.collection('logros_categorias').doc(id),
-        {'name': name, 'iconCodePoint': icon.codePoint, 'order': i},
-        SetOptions(merge: true),
+        {
+          'name': name,
+          'iconCodePoint': icon.codePoint,
+          'order': i,
+        },
       );
     }
 
-    // Solo los logros que no existen en Firestore
-    final allAchievements = AchievementDefinition.allAchievements;
-    for (int i = 0; i < allAchievements.length; i++) {
-      final a = allAchievements[i];
-      if (existingIds.contains(a.id)) continue;
+    // Logros
+    for (int i = 0; i < AchievementDefinition.allAchievements.length; i++) {
+      final a = AchievementDefinition.allAchievements[i];
       batch.set(
         _db.collection('logros_catalogo').doc(a.id),
         {
@@ -66,9 +62,5 @@ class AchievementSeeder {
     }
 
     await batch.commit();
-  }
-
-  Future<void> _seed() async {
-    await _seedMissing({});
   }
 }

@@ -5,7 +5,6 @@ import 'package:app_habitcrew/servicios/achievement_definitions.dart';
 import 'package:app_habitcrew/servicios/achievement_seeder.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter/foundation.dart';
 
 export 'package:app_habitcrew/servicios/achievement_definitions.dart'
     show AchievementDefinition;
@@ -31,9 +30,8 @@ class AchievementService {
   /// Actualiza `totalLogros` en el documento del usuario.
   /// Devuelve: (categorías fusionadas, IDs de logros ya reclamados)
   Future<(List<AchievementCategory>, Set<String>)> loadUserAchievements() async {
-    // Siembra logros nuevos; si añadió algo, invalida el caché del repo.
-    final seeded = await AchievementSeeder.instance.seedIfNeeded();
-    if (seeded) _repo.invalidateCache();
+    // Siembra el catálogo en Firestore si aún no se ha hecho.
+    await AchievementSeeder.instance.seedIfNeeded();
 
     final uid = _uid;
     if (uid == null) {
@@ -51,21 +49,14 @@ class AchievementService {
       final results = await Future.wait([
         userRef.get(),
         userRef.collection('habitos').get(),
+        userRef.collection('logros').get(),
         userRef.collection('compras').get(),
       ]);
 
       final userDoc     = results[0] as DocumentSnapshot<Map<String, dynamic>>;
       final habitosSnap = results[1] as QuerySnapshot<Map<String, dynamic>>;
-      final comprasSnap = results[2] as QuerySnapshot<Map<String, dynamic>>;
-
-      // Lectura de logros separada: si las reglas no la permiten aún,
-      // se trata como vacía en lugar de romper toda la función.
-      QuerySnapshot<Map<String, dynamic>>? logrosSnap;
-      try {
-        logrosSnap = await userRef.collection('logros').get();
-      } catch (e) {
-        debugPrint('[AchievementService] Sin acceso a subcolección logros: $e');
-      }
+      final logrosSnap  = results[2] as QuerySnapshot<Map<String, dynamic>>;
+      final comprasSnap = results[3] as QuerySnapshot<Map<String, dynamic>>;
 
       final userData = userDoc.data() ?? {};
 
@@ -93,8 +84,8 @@ class AchievementService {
       }
 
       // ── 5. Estados guardados en subcol. logros ───────────────────────────
-      final Map<String, Map<String, dynamic>> savedLogros = {
-        for (final doc in logrosSnap?.docs ?? []) doc.id: doc.data()
+      final savedLogros = {
+        for (final doc in logrosSnap.docs) doc.id: doc.data()
       };
 
       // ── 6. Función de métrica por logro (usa conditionType de Firestore) ──
@@ -108,14 +99,13 @@ class AchievementService {
           case 'monedas_ganadas':   return monedasGanadas;
           case 'num_compras':       return numCompras;
           case 'monedas_actuales':  return currentMonedas;
-          case 'dias_registro':     return diasDesdeRegistro + 1;
-          case 'primer_sesion':     return 1;
+          case 'dias_registro':     return diasDesdeRegistro;
           default:                  return 0;
         }
       }
 
-      // ── 7. Fusionar catálogo + calcular desbloqueos en memoria ──────────
-      final newlyUnlockedIds = <String>[];
+      // ── 7. Fusionar catálogo + Firestore, auto-desbloquear nuevos ────────
+      final WriteBatch batch = _firestore.batch();
 
       final updatedCategories = catalog.map((cat) {
         final updatedAchievements = cat.achievements.map((a) {
@@ -130,7 +120,15 @@ class AchievementService {
             unlockedDate = (saved!['unlockedDate'] as Timestamp).toDate();
           } else if (newlyUnlocked) {
             unlockedDate = DateTime.now();
-            newlyUnlockedIds.add(a.id);
+            batch.set(
+              userRef.collection('logros').doc(a.id),
+              {
+                'isUnlocked': true,
+                'unlockedDate': FieldValue.serverTimestamp(),
+                'coinsClaimed': false,
+              },
+              SetOptions(merge: true),
+            );
           }
 
           return a.copyWith(
@@ -148,43 +146,7 @@ class AchievementService {
         );
       }).toList();
 
-      // ── 8. IDs de logros con monedas ya reclamadas ───────────────────────
-      final claimedIds = <String>{
-        for (final e in savedLogros.entries)
-          if (e.value['coinsClaimed'] == true) e.key
-      };
-
-      // ── 9. Persistir en Firestore (independiente del UI) ─────────────────
-      if (newlyUnlockedIds.isNotEmpty) {
-        _persistUnlocks(userRef, newlyUnlockedIds, updatedCategories);
-      }
-
-      return (updatedCategories, claimedIds);
-    } catch (e, st) {
-      debugPrint('[AchievementService] Error en loadUserAchievements: $e\n$st');
-      return (catalog, <String>{});
-    }
-  }
-
-  /// Persiste desbloqueos nuevos en Firestore. Se ejecuta en segundo plano,
-  /// sin bloquear el UI.
-  Future<void> _persistUnlocks(
-    DocumentReference<Map<String, dynamic>> userRef,
-    List<String> newlyUnlockedIds,
-    List<AchievementCategory> updatedCategories,
-  ) async {
-    try {
-      final batch = _firestore.batch();
-      final now = FieldValue.serverTimestamp();
-
-      for (final id in newlyUnlockedIds) {
-        batch.set(
-          userRef.collection('logros').doc(id),
-          {'isUnlocked': true, 'unlockedDate': now, 'coinsClaimed': false},
-          SetOptions(merge: true),
-        );
-      }
-
+      // ── 8. Guardar totalLogros en el documento del usuario ───────────────
       final totalUnlocked = updatedCategories
           .expand((c) => c.achievements)
           .where((a) => a.isUnlocked)
@@ -197,8 +159,16 @@ class AchievementService {
       );
 
       await batch.commit();
-    } catch (e) {
-      debugPrint('[AchievementService] Error al persistir desbloqueos: $e');
+
+      // ── 9. IDs de logros con monedas ya reclamadas ───────────────────────
+      final claimedIds = {
+        for (final e in savedLogros.entries)
+          if (e.value['coinsClaimed'] == true) e.key
+      };
+
+      return (updatedCategories, claimedIds);
+    } catch (_) {
+      return (catalog, <String>{});
     }
   }
 
@@ -315,10 +285,8 @@ class AchievementService {
 
       final tieneBannerBeta = itemsCofre.any(
           (i) => i['tipo'] == 'banner' && i['nombre'] == 'Beta');
-      final tieneAvatarBeta = itemsCofre.any(
-          (i) => i['tipo'] == 'avatar' && i['nombre'] == 'Beta');
 
-      if (desbloqueados.contains('beta') && tieneBannerBeta && tieneAvatarBeta) return;
+      if (desbloqueados.contains('beta') && tieneBannerBeta) return;
 
       final updates = <String, dynamic>{};
 
@@ -333,14 +301,6 @@ class AchievementService {
           'tipo': 'banner',
           'nombre': 'Beta',
           'emoji': '🚀',
-          'fecha': Timestamp.now(),
-        });
-      }
-      if (!tieneAvatarBeta) {
-        itemsNuevos.add({
-          'tipo': 'avatar',
-          'nombre': 'Beta',
-          'emoji': 'β',
           'fecha': Timestamp.now(),
         });
       }
@@ -397,9 +357,9 @@ class AchievementService {
     }
 
     if (nuevosDesbloqueados.isNotEmpty) {
-      final monedas = nuevosDesbloqueados.fold<int>(0, (sum, id) {
+      final monedas = nuevosDesbloqueados.fold<int>(0, (acc, id) {
         final def = allAchievements.firstWhere((a) => a.id == id);
-        return sum + def.coinReward;
+        return acc + def.coinReward;
       });
 
       final batch = _firestore.batch();
@@ -475,21 +435,6 @@ class AchievementService {
         {'bannerEquipado': null});
   }
 
-  /// Equipa un avatar en el perfil.
-  Future<void> equiparAvatar(String nombre) async {
-    final uid = _uid;
-    if (uid == null) return;
-    await _firestore.collection('usuaris').doc(uid).set(
-        {'avatarEquipado': nombre}, SetOptions(merge: true));
-  }
-
-  /// Desequipa el avatar.
-  Future<void> desequiparAvatar() async {
-    final uid = _uid;
-    if (uid == null) return;
-    await _firestore.collection('usuaris').doc(uid).update(
-        {'avatarEquipado': null});
-  }
 
   /// Stream de datos del usuario para actualizar insignias en tiempo real.
   Stream<DocumentSnapshot> streamUsuario() {

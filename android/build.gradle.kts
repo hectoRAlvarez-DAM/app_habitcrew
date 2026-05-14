@@ -5,10 +5,12 @@ allprojects {
     }
 }
 
-// Eliminamos el bloque complejo de 'newBuildDir' que está fallando
-// y dejamos que Flutter use sus rutas por defecto.
+val newBuildDir: Directory = rootProject.layout.buildDirectory.dir("../../build").get()
+rootProject.layout.buildDirectory.value(newBuildDir)
 
 subprojects {
+    val newSubprojectBuildDir: Directory = newBuildDir.dir(project.name)
+    layout.buildDirectory.value(newSubprojectBuildDir)
     project.evaluationDependsOn(":app")
 }
 

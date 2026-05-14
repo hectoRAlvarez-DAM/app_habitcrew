@@ -4,15 +4,14 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:image_picker/image_picker.dart';
-import '../servicios/achievement_service.dart';
 import '../servicios/photo_service.dart';
 import 'profile_theme_service.dart';
+import '../servicios/shop_service.dart';
 
 class EditProfileScreen extends StatefulWidget {
   final String nombreActual;
   final String? fotoActual;
   final String? bannerActual;
-  final String? avatarActual;
   final String? bioActual;
   final List<Map<String, dynamic>> itemsCofre;
 
@@ -21,7 +20,6 @@ class EditProfileScreen extends StatefulWidget {
     required this.nombreActual,
     this.fotoActual,
     this.bannerActual,
-    this.avatarActual,
     this.bioActual,
     required this.itemsCofre,
   });
@@ -36,13 +34,12 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   late TextEditingController _bioController;
 
   final PhotoService _photoService = PhotoService();
-  final AchievementService _achievementService = AchievementService.instance;
 
   String? _foto;
   String? _banner;
-  String? _avatar;
   bool _subiendoFoto = false;
   bool _guardando = false;
+  Set<String> _purchasedShopBanners = {};
 
   @override
   void initState() {
@@ -51,7 +48,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     _bioController = TextEditingController(text: widget.bioActual ?? '');
     _foto = widget.fotoActual;
     _banner = widget.bannerActual;
-    _avatar = widget.avatarActual;
+    _loadShopBanners();
   }
 
   @override
@@ -61,11 +58,13 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     super.dispose();
   }
 
+  Future<void> _loadShopBanners() async {
+    final names = await ShopService.instance.loadPurchasedBannerNames();
+    if (mounted) setState(() => _purchasedShopBanners = names);
+  }
+
   List<Map<String, dynamic>> get _bannersCofre =>
       widget.itemsCofre.where((i) => i['tipo'] == 'banner').toList();
-
-  List<Map<String, dynamic>> get _avataresCofre =>
-      widget.itemsCofre.where((i) => i['tipo'] == 'avatar').toList();
 
   List<Color> get _bannerColors {
     final theme = ProfileThemeService.getBanner(_banner);
@@ -93,7 +92,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         'nom': nombre,
         'bio': bio,
         'bannerEquipado': _banner,
-        'avatarEquipado': _avatar,
       });
 
       if (mounted) Navigator.pop(context, true);
@@ -134,10 +132,12 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   Future<void> _eliminarFoto() async {
     setState(() => _subiendoFoto = true);
     await _photoService.eliminarFoto();
-    if (mounted) setState(() {
-      _subiendoFoto = false;
-      _foto = null;
-    });
+    if (mounted) {
+      setState(() {
+        _subiendoFoto = false;
+        _foto = null;
+      });
+    }
   }
 
   void _mostrarOpcionesFoto() {
@@ -200,9 +200,16 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   // ─── Banner ──────────────────────────────────────────────────────
 
   void _mostrarSelectorBanner() {
+    // Banners: default + cofre + tienda comprados
+    final cofreNames = _bannersCofre.map((i) => i['nombre'] as String?).toList();
+    final shopNames = ProfileThemeService.shopBanners
+        .where((e) => _purchasedShopBanners.contains(e.key))
+        .map((e) => e.key as String?)
+        .toList();
     final disponibles = [
       null,
-      ..._bannersCofre.map((i) => i['nombre'] as String?),
+      ...cofreNames,
+      ...shopNames.where((n) => !cofreNames.contains(n)),
     ];
 
     showModalBottomSheet(
@@ -285,88 +292,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               const SizedBox(height: 20),
             ],
           ),
-        ),
-      ),
-    );
-  }
-
-  // ─── Avatar ──────────────────────────────────────────────────────
-
-  void _mostrarSelectorAvatar() {
-    final disponibles = [
-      null,
-      ..._avataresCofre.map((i) => i['nombre'] as String?),
-    ];
-
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: const Color(0xFF1E1E2E),
-      shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-      builder: (ctx) => Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text('Elige tu avatar',
-                style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold)),
-            const SizedBox(height: 16),
-            Wrap(
-              spacing: 12,
-              runSpacing: 12,
-              children: disponibles.map((nombre) {
-                final theme = nombre != null
-                    ? ProfileThemeService.getAvatar(nombre)
-                    : null;
-                final isSelected = _avatar == nombre;
-                return GestureDetector(
-                  onTap: () {
-                    setState(() => _avatar = nombre);
-                    Navigator.pop(ctx);
-                  },
-                  child: Container(
-                    width: 64,
-                    height: 64,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: theme?.backgroundColor ??
-                          ProfileThemeService.defaultAvatarColor,
-                      border: Border.all(
-                        color: isSelected
-                            ? const Color(0xFF22C55E)
-                            : Colors.transparent,
-                        width: 3,
-                      ),
-                    ),
-                    child: Center(
-                      child: theme != null
-                          ? Text(
-                              nombre == 'Beta' ? 'β' : theme.emoji,
-                              style: TextStyle(
-                                fontSize: nombre == 'Beta' ? 26 : 28,
-                                fontWeight: FontWeight.w900,
-                                color: Colors.white,
-                              ),
-                            )
-                          : Text(
-                              widget.nombreActual.isNotEmpty
-                                  ? widget.nombreActual[0].toUpperCase()
-                                  : '?',
-                              style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 26,
-                                  fontWeight: FontWeight.bold)),
-                    ),
-                  ),
-                );
-              }).toList(),
-            ),
-            const SizedBox(height: 20),
-          ],
         ),
       ),
     );
@@ -603,75 +528,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
                         const SizedBox(height: 20),
 
-                        // Avatar
-                        _buildLabel('AVATAR'),
-                        const SizedBox(height: 8),
-                        GestureDetector(
-                          onTap: _mostrarSelectorAvatar,
-                          child: Container(
-                            padding: const EdgeInsets.all(14),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.05),
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(
-                                  color:
-                                      Colors.white.withValues(alpha: 0.1)),
-                            ),
-                            child: Row(
-                              children: [
-                                // Preview avatar
-                                Container(
-                                  width: 44,
-                                  height: 44,
-                                  decoration: BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    color: _avatar != null
-                                        ? ProfileThemeService.getAvatar(
-                                                _avatar)
-                                            ?.backgroundColor
-                                        : ProfileThemeService
-                                            .defaultAvatarColor,
-                                  ),
-                                  child: Center(
-                                    child: _avatar != null
-                                        ? Text(
-                                            _avatar == 'Beta'
-                                                ? 'β'
-                                                : (ProfileThemeService
-                                                        .getAvatar(_avatar)
-                                                        ?.emoji ??
-                                                    ''),
-                                            style: const TextStyle(
-                                                fontSize: 22),
-                                          )
-                                        : Text(
-                                            widget.nombreActual.isNotEmpty
-                                                ? widget.nombreActual[0]
-                                                    .toUpperCase()
-                                                : '?',
-                                            style: const TextStyle(
-                                                color: Colors.white,
-                                                fontSize: 20,
-                                                fontWeight:
-                                                    FontWeight.bold),
-                                          ),
-                                  ),
-                                ),
-                                const SizedBox(width: 12),
-                                Text(
-                                  _avatar ?? 'Inicial del nombre',
-                                  style: const TextStyle(
-                                      color: Colors.white70,
-                                      fontSize: 14),
-                                ),
-                                const Spacer(),
-                                const Icon(Icons.chevron_right,
-                                    color: Colors.white38),
-                              ],
-                            ),
-                          ),
-                        ),
-
                         const SizedBox(height: 32),
 
                         // Botón guardar
@@ -737,24 +593,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   }
 
   Widget _buildAvatarFallback() {
-    final theme = ProfileThemeService.getAvatar(_avatar);
-    if (theme != null) {
-      return Container(
-        color: theme.backgroundColor,
-        child: Center(
-          child: Text(
-            _avatar == 'Beta' ? 'β' : theme.emoji,
-            style: TextStyle(
-              fontSize: _avatar == 'Beta' ? 38 : 42,
-              fontWeight: FontWeight.w900,
-              color: Colors.white,
-            ),
-          ),
-        ),
-      );
-    }
     return Container(
-      color: ProfileThemeService.defaultAvatarColor,
+      color: const Color(0xFF5865F2),
       child: Center(
         child: Text(
           widget.nombreActual.isNotEmpty

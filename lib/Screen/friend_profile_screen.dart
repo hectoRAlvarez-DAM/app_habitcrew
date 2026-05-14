@@ -30,7 +30,6 @@ class _FriendProfileScreenState extends State<FriendProfileScreen> {
   List<bool> _historialGlobal = List.filled(7, false);
   List<String> _insigniasEquipadas = [];
   String? _bannerEquipado;
-  String? _avatarEquipado;
   String? _fotoPerfil;
   bool _loading = true;
 
@@ -60,7 +59,6 @@ class _FriendProfileScreenState extends State<FriendProfileScreen> {
         _insigniasEquipadas = List<String>.from(
             userData?['insigniasEquipadas'] ?? []);
         _bannerEquipado = userData?['bannerEquipado'] as String?;
-        _avatarEquipado = userData?['avatarEquipado'] as String?;
         _fotoPerfil = userData?['fotoPerfil'] as String?;
         _loading = false;
       });
@@ -549,24 +547,8 @@ class _FriendProfileScreenState extends State<FriendProfileScreen> {
   }
 
   Widget _buildFriendAvatarFallback() {
-    final avatarTheme = ProfileThemeService.getAvatar(_avatarEquipado);
-    if (avatarTheme != null) {
-      return Container(
-        color: avatarTheme.backgroundColor,
-        child: Center(
-          child: _avatarEquipado == 'Beta'
-              ? const Text('β',
-                  style: TextStyle(
-                      fontSize: 36,
-                      fontWeight: FontWeight.w900,
-                      color: Colors.white))
-              : Text(avatarTheme.emoji,
-                  style: const TextStyle(fontSize: 40)),
-        ),
-      );
-    }
     return Container(
-      color: ProfileThemeService.defaultAvatarColor,
+      color: const Color(0xFF5865F2),
       child: Center(
         child: Text(
           widget.friendName.isNotEmpty
@@ -581,4 +563,4 @@ class _FriendProfileScreenState extends State<FriendProfileScreen> {
       ),
     );
   }
-}
+} 

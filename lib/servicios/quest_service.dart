@@ -3,7 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 // ─── Tipos de recompensa ────────────────────────────────────────────
-enum RewardType { monedasSmall, monedasBig, banner, avatar }
+enum RewardType { monedasSmall, monedasBig, banner }
 
 class ChestReward {
   final RewardType type;
@@ -156,13 +156,6 @@ class QuestService {
     {'nombre': 'Fondo del mar', 'emoji': '🌊'},
   ];
 
-  static const List<Map<String, String>> _avatarsExclusivos = [
-    {'nombre': 'Ninja', 'emoji': '🥷'},
-    {'nombre': 'Astronauta', 'emoji': '👨‍🚀'},
-    {'nombre': 'Robot', 'emoji': '🤖'},
-    {'nombre': 'Zorro', 'emoji': '🦊'},
-    {'nombre': 'Dragón', 'emoji': '🐉'},
-  ];
 
   // ─── Obtener misiones del día ───────────────────────────────────
 
@@ -326,7 +319,7 @@ class QuestService {
           {
             'itemsCofre': FieldValue.arrayUnion([
               {
-                'tipo': reward.type == RewardType.banner ? 'banner' : 'avatar',
+                'tipo': 'banner',
                 'nombre': reward.itemName,
                 'emoji': reward.itemEmoji,
                 'fecha': Timestamp.now(),
@@ -356,33 +349,6 @@ class QuestService {
     );
   }
 
-  /// Equipa un avatar del cofre en el perfil del usuario.
-  Future<void> equiparAvatar(String nombreAvatar) async {
-    final uid = _uid;
-    if (uid == null) return;
-    await _firestore.collection('usuaris').doc(uid).set(
-      {'avatarEquipado': nombreAvatar},
-      SetOptions(merge: true),
-    );
-  }
-
-  /// Desequipa el banner (vuelve al default).
-  Future<void> desequiparBanner() async {
-    final uid = _uid;
-    if (uid == null) return;
-    await _firestore.collection('usuaris').doc(uid).update(
-      {'bannerEquipado': null},
-    );
-  }
-
-  /// Desequipa el avatar (vuelve a la inicial).
-  Future<void> desequiparAvatar() async {
-    final uid = _uid;
-    if (uid == null) return;
-    await _firestore.collection('usuaris').doc(uid).update(
-      {'avatarEquipado': null},
-    );
-  }
 
   ChestReward _generarRecompensa() {
     final rng = Random();
@@ -405,12 +371,10 @@ class QuestService {
         itemEmoji: item['emoji'],
       );
     } else {
-      // 3% — avatar exclusivo
-      final item = _avatarsExclusivos[rng.nextInt(_avatarsExclusivos.length)];
+      // Avatar eliminado — suma a monedas pequeñas
       return ChestReward(
-        type: RewardType.avatar,
-        itemName: item['nombre'],
-        itemEmoji: item['emoji'],
+        type: RewardType.monedasSmall,
+        monedas: 15 + rng.nextInt(10),
       );
     }
   }
