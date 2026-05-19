@@ -167,7 +167,7 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
                 color: t.cardBg,
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: const Icon(Icons.arrow_back, color: Colors.white, size: 18),
+              child: Icon(Icons.arrow_back, color: t.iconPrimary, size: 18),
             ),
           ),
           const SizedBox(width: 12),
@@ -196,7 +196,7 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
                 children: [
                   Text(widget.nombreGrupo,
                       style: TextStyle(
-                          color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold)),
+                          color: t.textPrimary, fontSize: 15, fontWeight: FontWeight.bold)),
                   Text(
                     _miembros.isEmpty
                         ? 'Cargando...'
@@ -316,7 +316,7 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
                       decoration: BoxDecoration(
                         color: esMio
                             ? const Color(0xFF22C55E).withValues(alpha: 0.85)
-                            : Colors.white.withValues(alpha: 0.08),
+                            : t.cardBg,
                         borderRadius: BorderRadius.only(
                           topLeft: const Radius.circular(16),
                           topRight: const Radius.circular(16),
@@ -333,7 +333,7 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
                               style: TextStyle(
                                   color: esMio
                                       ? Colors.white
-                                      : Colors.white.withValues(alpha: 0.9),
+                                      : t.textPrimary,
                                   fontSize: 14)),
                         ],
                       ),
@@ -378,13 +378,14 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
 
   // Preview del mensaje al que se responde (dentro de la burbuja)
   Widget _buildReplyPreview(Map<String, dynamic> replyTo, bool esMio) {
+    final t = _t;
     return Container(
       margin: const EdgeInsets.only(bottom: 6),
       padding: const EdgeInsets.fromLTRB(10, 6, 10, 6),
       decoration: BoxDecoration(
         color: esMio
-            ? Colors.black.withValues(alpha: 0.15)
-            : Colors.white.withValues(alpha: 0.08),
+            ? (t.isContrast ? const Color(0xFFEEEEEE) : Colors.black.withValues(alpha: 0.15))
+            : t.cardBg,
         borderRadius: BorderRadius.circular(8),
         border: Border(
           left: BorderSide(
@@ -406,8 +407,8 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
             replyTo['texto'] ?? '',
             style: TextStyle(
                 color: esMio
-                    ? Colors.white.withValues(alpha: 0.6)
-                    : Colors.white54,
+                    ? (t.isContrast ? const Color(0xFF555555) : Colors.white.withValues(alpha: 0.6))
+                    : t.textMuted,
                 fontSize: 12),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
@@ -470,7 +471,7 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
     final t = _t;
     showModalBottomSheet(
       context: context,
-      backgroundColor: const Color(0xFF1E1E2E),
+      backgroundColor: t.isContrast ? Colors.white : const Color(0xFF1E1E2E),
       shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (ctx) => Padding(
@@ -506,11 +507,11 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
               ),
             ),
             const SizedBox(height: 12),
-            const Divider(color: Colors.white12),
+            Divider(color: t.divider),
             const SizedBox(height: 4),
             ListTile(
               leading: Icon(Icons.reply, color: t.textSecondary, size: 20),
-              title: const Text('Responder', style: TextStyle(color: Colors.white, fontSize: 14)),
+              title: Text('Responder', style: TextStyle(color: t.textPrimary, fontSize: 14)),
               dense: true,
               onTap: () {
                 Navigator.pop(ctx);
@@ -524,7 +525,7 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
             ),
             ListTile(
               leading: Icon(Icons.copy, color: t.textSecondary, size: 20),
-              title: const Text('Copiar texto', style: TextStyle(color: Colors.white, fontSize: 14)),
+              title: Text('Copiar texto', style: TextStyle(color: t.textPrimary, fontSize: 14)),
               dense: true,
               onTap: () {
                 Navigator.pop(ctx);
@@ -590,7 +591,7 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
   }
 
   Future<void> _enviarReaccionLibre(String emoji) async {
-    setState(() => _showEmojiPicker = false);
+    final t = _t;    setState(() => _showEmojiPicker = false);
     await _chatService.enviarMensaje(
       grupoId: widget.grupoId,
       texto: emoji,
@@ -600,7 +601,7 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
   }
 
   void _mostrarPickerReaccion(String mensajeId) {
-    showModalBottomSheet(
+    final t = _t;    showModalBottomSheet(
       context: context,
       backgroundColor: const Color(0xFF1E1E2E),
       shape: const RoundedRectangleBorder(
@@ -613,7 +614,7 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
           children: [
             Text('Reaccionar',
                 style: TextStyle(
-                    color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold)),
+                    color: t.textPrimary, fontSize: 15, fontWeight: FontWeight.bold)),
             const SizedBox(height: 12),
             _buildEmojiPickerPanel(mensajeId),
           ],
@@ -630,7 +631,7 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 8, 12, 8),
       decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.4),
+        color: t.isContrast ? const Color(0xFFE8F5E9) : Colors.black.withValues(alpha: 0.4),
         border: Border(
           top: BorderSide(color: const Color(0xFF22C55E).withValues(alpha: 0.3)),
           left: const BorderSide(color: Color(0xFF22C55E), width: 3),
@@ -708,7 +709,7 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
               child: TextField(
                 controller: _controller,
                 focusNode: _inputFocus,
-                style: TextStyle(color: Colors.white, fontSize: 14),
+                style: TextStyle(color: t.textPrimary, fontSize: 14),
                 decoration: InputDecoration(
                   hintText: 'Escribe un mensaje...',
                   hintStyle: TextStyle(color: t.textMuted, fontSize: 14),
@@ -739,9 +740,9 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
   // ── Miembros modal ───────────────────────────────────────────────
 
   void _mostrarMiembros() {
-    showModalBottomSheet(
+    final t = _t;    showModalBottomSheet(
       context: context,
-      backgroundColor: const Color(0xFF1E1E2E),
+      backgroundColor: t.isContrast ? Colors.white : const Color(0xFF1E1E2E),
       shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (ctx) => Padding(
@@ -752,7 +753,7 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
           children: [
             Text('Miembros (${_miembros.length})',
                 style: TextStyle(
-                    color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+                    color: t.textPrimary, fontSize: 16, fontWeight: FontWeight.bold)),
             const SizedBox(height: 16),
             ..._miembros.map((m) => Padding(
                   padding: const EdgeInsets.only(bottom: 12),
@@ -761,7 +762,7 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
                       _buildMiniAvatar(m, 36),
                       const SizedBox(width: 12),
                       Text(m['nom'] as String? ?? 'Usuario',
-                          style: TextStyle(color: Colors.white, fontSize: 14)),
+                          style: TextStyle(color: t.textPrimary, fontSize: 14)),
                       if (m['uid'] == _myUid) ...[
                         const SizedBox(width: 6),
                         Container(
@@ -770,7 +771,7 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
                             color: const Color(0xFF22C55E).withValues(alpha: 0.2),
                             borderRadius: BorderRadius.circular(8),
                           ),
-                          child: const Text('Tú',
+                          child: Text('Tú',
                               style: TextStyle(color: Color(0xFF22C55E), fontSize: 10)),
                         ),
                       ],
@@ -793,7 +794,7 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
       width: size, height: size,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        border: Border.all(color: Colors.black, width: 1.5),
+        border: Border.all(color: t.isContrast ? Colors.white : Colors.black, width: 1.5),
         color: const Color(0xFF5865F2),
       ),
       child: ClipOval(

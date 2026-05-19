@@ -168,3 +168,4 @@ class BannerTheme {
     this.isShopItem = false,
   });
 }
+

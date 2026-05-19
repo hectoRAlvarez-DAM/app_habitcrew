@@ -6,7 +6,9 @@
       "Bash(flutter doctor *)",
       "Read(//c/Users/hecto/AppData/Local/Android/sdk/**)",
       "Bash(flutter build *)",
-      "Bash(flutter pub *)"
+      "Bash(flutter pub *)",
+      "Bash(dart --version)",
+      "Bash(where java *)"
     ]
   }
 }
