@@ -13,6 +13,8 @@ class DuolingoTextField extends StatelessWidget {
   final String? Function(String?)? validator;
   final void Function(String)? onChanged;
   final bool enabled;
+  final FocusNode? focusNode;
+  final void Function(String)? onSubmitted;
 
   const DuolingoTextField({
     super.key,
@@ -26,6 +28,8 @@ class DuolingoTextField extends StatelessWidget {
     this.validator,
     this.onChanged,
     this.enabled = true,
+    this.focusNode,
+    this.onSubmitted,
   });
 
   @override
@@ -99,6 +103,8 @@ class DuolingoTextField extends StatelessWidget {
             validator: validator,
             onChanged: onChanged,
             enabled: enabled,
+            focusNode: focusNode,
+            onFieldSubmitted: onSubmitted,
             style: TextStyle(
               color: Colors.white,
               fontSize: fontSize,

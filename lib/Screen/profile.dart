@@ -202,22 +202,6 @@ class _ProfileState extends State<Profile> {
                             ),
                           ),
                         // Botón editar perfil
-                        Positioned(
-                          top: 12,
-                          right: 12,
-                          child: GestureDetector(
-                            onTap: _abrirEditorPerfil,
-                            child: Container(
-                              padding: const EdgeInsets.all(8),
-                              decoration: BoxDecoration(
-                                color: Colors.black.withValues(alpha: 0.4),
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              child: const Icon(Icons.edit,
-                                  color: Colors.white, size: 18),
-                            ),
-                          ),
-                        ),
                       ],
                     ),
                   ),

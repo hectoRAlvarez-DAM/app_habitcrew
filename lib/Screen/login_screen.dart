@@ -29,6 +29,10 @@ class _LoginScreenState extends State<LoginScreen>
   bool _obscurePassword = true;
   late AnimationController _animationController;
 
+  final FocusNode _usernameFocus = FocusNode();
+  final FocusNode _emailFocus = FocusNode();
+  final FocusNode _passwordFocus = FocusNode();
+
   // Lista de ondas activas
   final List<Wave> _waves = [];
   final Random _random = Random();
@@ -55,6 +59,9 @@ class _LoginScreenState extends State<LoginScreen>
     _emailController.dispose();
     _passwordController.dispose();
     _usernameController.dispose();
+    _usernameFocus.dispose();
+    _emailFocus.dispose();
+    _passwordFocus.dispose();
     super.dispose();
   }
 
@@ -159,6 +166,31 @@ class _LoginScreenState extends State<LoginScreen>
 
   void _toggleMode() {
     setState(() => _isLoginMode = !_isLoginMode);
+  }
+
+  void _onFieldSubmitted(String value, int nextStep) {
+    if (_isLoginMode) {
+      switch (nextStep) {
+        case 0:
+          _passwordFocus.requestFocus();
+          break;
+        case 1:
+          _handleSubmit();
+          break;
+      }
+    } else {
+      switch (nextStep) {
+        case 0:
+          _emailFocus.requestFocus();
+          break;
+        case 1:
+          _passwordFocus.requestFocus();
+          break;
+        case 2:
+          _handleSubmit();
+          break;
+      }
+    }
   }
 
   void _mostrarTerminos() {
@@ -272,7 +304,7 @@ class _LoginScreenState extends State<LoginScreen>
                 '- Enviarte recordatorios (si activas notificaciones).\n'
                 '- Mejorar la App (análisis agregados, corrección de errores).\n'
                 '- Cumplir obligaciones legales.\n\n'
-                '4. Base legal (RGPD u otras)\n'
+                '4. Base legal (RGPD)\n'
                 '- Ejecución del contrato: uso de la App y funciones grupales.\n'
                 '- Consentimiento: notificaciones push, análisis opcionales.\n'
                 '- Interés legítimo: mejorar la seguridad y prevenir abusos.\n\n'
@@ -647,6 +679,9 @@ class _LoginScreenState extends State<LoginScreen>
                                                 validator: _validateUsername,
                                                 isUltraSmall:
                                                     isUltraSmallScreen,
+                                                focusNode: _usernameFocus,
+                                                onSubmitted: (v) =>
+                                                    _onFieldSubmitted(v, 0),
                                               ),
                                               SizedBox(
                                                 height: isUltraSmallScreen
@@ -663,6 +698,12 @@ class _LoginScreenState extends State<LoginScreen>
                                               prefixIcon: Icons.email,
                                               validator: _validateEmail,
                                               isUltraSmall: isUltraSmallScreen,
+                                              focusNode: _emailFocus,
+                                              onSubmitted: (v) =>
+                                                  _onFieldSubmitted(
+                                                    v,
+                                                    _isLoginMode ? 0 : 1,
+                                                  ),
                                             ),
 
                                             SizedBox(
@@ -675,6 +716,12 @@ class _LoginScreenState extends State<LoginScreen>
                                               context,
                                               controller: _passwordController,
                                               isUltraSmall: isUltraSmallScreen,
+                                              focusNode: _passwordFocus,
+                                              onSubmitted: (v) =>
+                                                  _onFieldSubmitted(
+                                                    v,
+                                                    _isLoginMode ? 1 : 2,
+                                                  ),
                                             ),
 
                                             if (_isLoginMode) ...[
@@ -879,6 +926,40 @@ class _LoginScreenState extends State<LoginScreen>
                                                           MainAxisAlignment
                                                               .center,
                                                       children: [
+                                                        Text(
+                                                          'Al registrarte, aceptas nuestros',
+                                                          style: TextStyle(
+                                                            color:
+                                                                const Color.fromARGB(
+                                                                  200,
+                                                                  251,
+                                                                  252,
+                                                                  251,
+                                                                ),
+                                                            fontSize:
+                                                                isUltraSmallScreen
+                                                                ? 8.0
+                                                                : (isMobile
+                                                                      ? 10.0
+                                                                      : 11.0),
+                                                            fontWeight:
+                                                                FontWeight.w500,
+                                                          ),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                    SizedBox(
+                                                      height: isUltraSmallScreen
+                                                          ? 2.0
+                                                          : (isMobile
+                                                                ? 4.0
+                                                                : 6.0),
+                                                    ),
+                                                    Row(
+                                                      mainAxisAlignment:
+                                                          MainAxisAlignment
+                                                              .center,
+                                                      children: [
                                                         GestureDetector(
                                                           onTap: () =>
                                                               _mostrarTerminos(),
@@ -986,6 +1067,8 @@ class _LoginScreenState extends State<LoginScreen>
     required IconData prefixIcon,
     required String? Function(String?)? validator,
     bool isUltraSmall = false,
+    FocusNode? focusNode,
+    void Function(String)? onSubmitted,
   }) {
     return SizedBox(
       height: isUltraSmall ? 40.0 : null,
@@ -995,6 +1078,8 @@ class _LoginScreenState extends State<LoginScreen>
         hintText: hintText,
         prefixIcon: prefixIcon,
         validator: validator,
+        focusNode: focusNode,
+        onSubmitted: onSubmitted,
       ),
     );
   }
@@ -1003,6 +1088,8 @@ class _LoginScreenState extends State<LoginScreen>
     BuildContext context, {
     required TextEditingController controller,
     bool isUltraSmall = false,
+    FocusNode? focusNode,
+    void Function(String)? onSubmitted,
   }) {
     return SizedBox(
       height: isUltraSmall ? 40.0 : null,
@@ -1013,6 +1100,8 @@ class _LoginScreenState extends State<LoginScreen>
         prefixIcon: Icons.lock,
         obscureText: _obscurePassword,
         validator: _validatePassword,
+        focusNode: focusNode,
+        onSubmitted: onSubmitted,
         suffixIcon: IconButton(
           icon: Icon(
             _obscurePassword ? Icons.visibility_off : Icons.visibility,
