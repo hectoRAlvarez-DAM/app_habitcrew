@@ -1,5 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:app_habitcrew/Widgets/contrast_mode.dart';
+import 'package:app_habitcrew/Widgets/app_theme.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:app_habitcrew/Widgets/animated_background.dart';
 import 'package:app_habitcrew/Widgets/glassmorphism_card.dart';
@@ -22,6 +24,10 @@ class FriendProfileScreen extends StatefulWidget {
 }
 
 class _FriendProfileScreenState extends State<FriendProfileScreen> {
+
+  AppTheme get _t => AppTheme.fromContrast(ContrastMode.of(context));
+
+
   final FriendService _friendService = FriendService();
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
@@ -30,7 +36,6 @@ class _FriendProfileScreenState extends State<FriendProfileScreen> {
   List<bool> _historialGlobal = List.filled(7, false);
   List<String> _insigniasEquipadas = [];
   String? _bannerEquipado;
-  String? _avatarEquipado;
   String? _fotoPerfil;
   bool _loading = true;
 
@@ -60,7 +65,6 @@ class _FriendProfileScreenState extends State<FriendProfileScreen> {
         _insigniasEquipadas = List<String>.from(
             userData?['insigniasEquipadas'] ?? []);
         _bannerEquipado = userData?['bannerEquipado'] as String?;
-        _avatarEquipado = userData?['avatarEquipado'] as String?;
         _fotoPerfil = userData?['fotoPerfil'] as String?;
         _loading = false;
       });
@@ -122,6 +126,8 @@ class _FriendProfileScreenState extends State<FriendProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isContrast = ContrastMode.of(context);
+    final t = AppTheme.fromContrast(isContrast);
     return Scaffold(
       backgroundColor: Colors.transparent,
       body: AnimatedBackground(
@@ -161,7 +167,7 @@ class _FriendProfileScreenState extends State<FriendProfileScreen> {
                                         style: TextStyle(
                                           fontSize: 44,
                                           fontWeight: FontWeight.w900,
-                                          color: Colors.white.withValues(alpha: 0.15),
+                                          color: t.cardBg,
                                           letterSpacing: 14,
                                         ),
                                       ),
@@ -172,7 +178,7 @@ class _FriendProfileScreenState extends State<FriendProfileScreen> {
                                         opacity: 0.3,
                                         child: Text(
                                           bannerTheme?.emoji ?? '',
-                                          style: const TextStyle(fontSize: 70),
+                                          style: TextStyle(fontSize: 70),
                                         ),
                                       ),
                                     )
@@ -188,10 +194,10 @@ class _FriendProfileScreenState extends State<FriendProfileScreen> {
                               child: Container(
                                 padding: const EdgeInsets.all(8),
                                 decoration: BoxDecoration(
-                                  color: Colors.black.withValues(alpha: 0.3),
+                                  color: t.cardBg,
                                   borderRadius: BorderRadius.circular(10),
                                 ),
-                                child: const Icon(Icons.arrow_back,
+                                child: Icon(Icons.arrow_back,
                                     color: Colors.white, size: 20),
                               ),
                             ),
@@ -228,7 +234,7 @@ class _FriendProfileScreenState extends State<FriendProfileScreen> {
                           children: [
                             Text(
                               widget.friendName,
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 24,
                                 fontWeight: FontWeight.bold,
                                 color: Colors.white,
@@ -237,8 +243,8 @@ class _FriendProfileScreenState extends State<FriendProfileScreen> {
                             const SizedBox(height: 4),
                             Text(
                               'Miembro desde ${_formatearFecha(_userData?['data_registre'])}',
-                              style: const TextStyle(
-                                  color: Colors.white54, fontSize: 13),
+                              style: TextStyle(
+                                  color: t.textMuted, fontSize: 13),
                             ),
                           ],
                         ),
@@ -264,9 +270,7 @@ class _FriendProfileScreenState extends State<FriendProfileScreen> {
                                 ),
                                 _buildStat(
                                   'Mejor racha',
-                                  _habitos.isEmpty
-                                      ? '0'
-                                      : '${_habitos.map((h) => (h['recordRacha'] as num?)?.toInt() ?? 0).reduce((a, b) => a > b ? a : b)}',
+                                  '${(_userData?['recordRachaGlobal'] as num?)?.toInt() ?? 0}',
                                   '🔥',
                                 ),
                               ],
@@ -284,10 +288,10 @@ class _FriendProfileScreenState extends State<FriendProfileScreen> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Text(
+                              Text(
                                 'INSIGNIAS',
                                 style: TextStyle(
-                                  color: Colors.white54,
+                                  color: t.textMuted,
                                   fontSize: 12,
                                   fontWeight: FontWeight.bold,
                                   letterSpacing: 1.2,
@@ -318,8 +322,8 @@ class _FriendProfileScreenState extends State<FriendProfileScreen> {
                                             size: 14),
                                         const SizedBox(width: 4),
                                         Text(def.title,
-                                            style: const TextStyle(
-                                                color: Colors.white,
+                                            style: TextStyle(
+                                                color: t.textPrimary,
                                                 fontSize: 12)),
                                       ],
                                     ),
@@ -338,7 +342,7 @@ class _FriendProfileScreenState extends State<FriendProfileScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text(
+                            Text(
                               '📊 Actividad últimos 7 días',
                               style: TextStyle(
                                   fontSize: 16,
@@ -364,7 +368,7 @@ class _FriendProfileScreenState extends State<FriendProfileScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text(
+                            Text(
                               '📋 Hábitos',
                               style: TextStyle(
                                   fontSize: 16,
@@ -392,7 +396,7 @@ class _FriendProfileScreenState extends State<FriendProfileScreen> {
                                           child: Row(
                                             children: [
                                               Text(h['emoji'] ?? '✅',
-                                                  style: const TextStyle(
+                                                  style: TextStyle(
                                                       fontSize: 20)),
                                               const SizedBox(width: 12),
                                               Expanded(
@@ -402,8 +406,8 @@ class _FriendProfileScreenState extends State<FriendProfileScreen> {
                                                   children: [
                                                     Text(
                                                       h['nombre'] ?? '',
-                                                      style: const TextStyle(
-                                                          color: Colors.white,
+                                                      style: TextStyle(
+                                                          color: t.textPrimary,
                                                           fontSize: 14,
                                                           fontWeight:
                                                               FontWeight.w500),
@@ -411,8 +415,8 @@ class _FriendProfileScreenState extends State<FriendProfileScreen> {
                                                     Text(
                                                       h['frecuencia'] ??
                                                           'Diario',
-                                                      style: const TextStyle(
-                                                          color: Colors.white38,
+                                                      style: TextStyle(
+                                                          color: t.textMuted,
                                                           fontSize: 11),
                                                     ),
                                                   ],
@@ -476,17 +480,17 @@ class _FriendProfileScreenState extends State<FriendProfileScreen> {
             color: const Color(0xFF22C55E).withValues(alpha: 0.12),
             borderRadius: BorderRadius.circular(12),
           ),
-          child: Text(emoji, style: const TextStyle(fontSize: 20)),
+          child: Text(emoji, style: TextStyle(fontSize: 20)),
         ),
         const SizedBox(height: 6),
         Text(value,
-            style: const TextStyle(
+            style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
                 color: Colors.white)),
         Text(label,
             style:
-                const TextStyle(fontSize: 11, color: Colors.white54)),
+                TextStyle(fontSize: 11, color: Colors.white54)),
       ],
     );
   }
@@ -549,31 +553,16 @@ class _FriendProfileScreenState extends State<FriendProfileScreen> {
   }
 
   Widget _buildFriendAvatarFallback() {
-    final avatarTheme = ProfileThemeService.getAvatar(_avatarEquipado);
-    if (avatarTheme != null) {
-      return Container(
-        color: avatarTheme.backgroundColor,
-        child: Center(
-          child: _avatarEquipado == 'Beta'
-              ? const Text('β',
-                  style: TextStyle(
-                      fontSize: 36,
-                      fontWeight: FontWeight.w900,
-                      color: Colors.white))
-              : Text(avatarTheme.emoji,
-                  style: const TextStyle(fontSize: 40)),
-        ),
-      );
-    }
+    final t = _t;
     return Container(
-      color: ProfileThemeService.defaultAvatarColor,
+      color: const Color(0xFF5865F2),
       child: Center(
         child: Text(
           widget.friendName.isNotEmpty
               ? widget.friendName[0].toUpperCase()
               : '?',
-          style: const TextStyle(
-            color: Colors.white,
+          style: TextStyle(
+            color: t.textPrimary,
             fontSize: 36,
             fontWeight: FontWeight.bold,
           ),

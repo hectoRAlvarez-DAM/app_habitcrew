@@ -63,9 +63,9 @@ class _PantallacarregaState extends State<Pantallacarrega> {
                       radius: 0.3 + (value * 0.7),
                       colors: [
                         // Tonos de verde mucho más suaves con opacidades reducidas
-                        Colors.green.withOpacity(0.25 * value),  // Muy sutil
-                        Colors.green.withOpacity(0.15 * value),
-                        Colors.green.withOpacity(0.05 * value),
+                        Colors.green.withValues(alpha: 0.25 * value),  // Muy sutil
+                        Colors.green.withValues(alpha: 0.15 * value),
+                        Colors.green.withValues(alpha: 0.05 * value),
                         Colors.transparent,
                       ],
                       stops: const [0.0, 0.3, 0.7, 1.0],

@@ -1,9 +1,13 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:app_habitcrew/Widgets/contrast_mode.dart';
+import 'package:app_habitcrew/Widgets/app_theme.dart';
 import 'package:flutter/services.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:app_habitcrew/servicios/friend_service.dart';
 import 'package:app_habitcrew/servicios/servei_auth.dart';
+import 'package:app_habitcrew/servicios/coin_service.dart';
 import 'package:app_habitcrew/Screen/friend_profile_screen.dart';
 import 'package:app_habitcrew/Screen/login_screen.dart';
 import 'package:app_habitcrew/Screen/group_chat_screen.dart';
@@ -17,6 +21,9 @@ class EpicPanel extends StatefulWidget {
 
 class _EpicPanelState extends State<EpicPanel>
     with SingleTickerProviderStateMixin {
+
+  AppTheme get _t => AppTheme.fromContrast(ContrastMode.of(context));
+
   late AnimationController _controller;
   late Animation<Offset> _slideAnimation;
   late Animation<double> _fadeAnimation;
@@ -35,6 +42,8 @@ class _EpicPanelState extends State<EpicPanel>
 
   String _userName = '';
   String _userEmail = '';
+  String? _fotoPerfil;
+  Map<String, String?> _fotoAmigos = {};
 
   @override
   void initState() {
@@ -80,6 +89,15 @@ class _EpicPanelState extends State<EpicPanel>
     final userDoc = results[4] as DocumentSnapshot;
     final userData = userDoc.data() as Map<String, dynamic>?;
 
+    // Fotos de amigos en paralelo
+    final fotosFutures = amigos.map((a) async {
+      final uid = a['uid'] as String;
+      final foto = a['fotoPerfil'] as String?;
+      return MapEntry(uid, foto);
+    });
+    final fotosEntries = await Future.wait(fotosFutures);
+    final fotosAmigos = Map.fromEntries(fotosEntries);
+
     // Comprobar cuáles amigos están activos hoy en paralelo
     final activosFutures = amigos.map((a) async {
       final activo = await _friendService.completoAlgoHoy(a['uid'] as String);
@@ -88,6 +106,12 @@ class _EpicPanelState extends State<EpicPanel>
     final activosEntries = await Future.wait(activosFutures);
     final activos = Map.fromEntries(activosEntries);
 
+    // Sincronizar monedas de Firestore con CoinService
+    final monedasFirestore = (userData?['monedas'] as num?)?.toInt();
+    if (monedasFirestore != null) {
+      CoinService.instance.coinsNotifier.value = monedasFirestore;
+    }
+
     if (mounted) {
       setState(() {
         _codigoAmigo = codigo;
@@ -95,8 +119,10 @@ class _EpicPanelState extends State<EpicPanel>
         _solicitudes = solicitudes;
         _grupos = grupos;
         _amigosActivos = activos;
+        _fotoAmigos = fotosAmigos;
         _userName = userData?['nom'] ?? '';
         _userEmail = userData?['email'] ?? '';
+        _fotoPerfil = userData?['fotoPerfil'] as String?;
         _loadingAmigos = false;
       });
     }
@@ -155,6 +181,8 @@ class _EpicPanelState extends State<EpicPanel>
 
   @override
   Widget build(BuildContext context) {
+    final isContrast = ContrastMode.of(context);
+    final t = AppTheme.fromContrast(isContrast);
     return FadeTransition(
       opacity: _fadeAnimation,
       child: GestureDetector(
@@ -175,7 +203,7 @@ class _EpicPanelState extends State<EpicPanel>
                     height: double.infinity,
                     child: SafeArea(
                       child: _loadingAmigos
-                          ? const Center(
+                          ? Center(
                               child: CircularProgressIndicator(
                                   color: Color(0xFF22C55E)))
                           : Column(
@@ -220,53 +248,108 @@ class _EpicPanelState extends State<EpicPanel>
   // ─── Secciones del panel ─────────────────────────────────────────
 
   Widget _buildHeader() {
+    final t = _t;
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
-      child: Row(
+      child: Column(
         children: [
-          Container(
-            width: 48,
-            height: 48,
-            decoration: const BoxDecoration(
-              shape: BoxShape.circle,
-              color: Color(0xFF22C55E),
-            ),
-            child: Center(
-              child: Text(
-                _userName.isNotEmpty ? _userName[0].toUpperCase() : '?',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
+          Row(
+            children: [
+              // Avatar con foto si la hay
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                      color: const Color(0xFF22C55E).withValues(alpha: 0.5),
+                      width: 2),
+                ),
+                child: ClipOval(
+                  child: _fotoPerfil != null
+                      ? _buildFotoWidget(_fotoPerfil!, fallbackNombre: _userName)
+                      : Container(
+                          color: const Color(0xFF22C55E),
+                          child: Center(
+                            child: Text(
+                              _userName.isNotEmpty
+                                  ? _userName[0].toUpperCase()
+                                  : '?',
+                              style: TextStyle(
+                                color: t.textPrimary,
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ),
                 ),
               ),
-            ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _userName,
+                      style: TextStyle(
+                        color: t.textPrimary,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    Text(
+                      _userEmail,
+                      style: TextStyle(
+                          color: t.textMuted, fontSize: 12),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+              GestureDetector(
+                onTap: _cerrar,
+                child: Icon(Icons.close,
+                    color: t.textMuted, size: 20),
+              ),
+            ],
           ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  _userName,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
+          const SizedBox(height: 14),
+          // Monedas
+          ValueListenableBuilder<int>(
+            valueListenable: CoinService.instance.coinsNotifier,
+            builder: (_, coins, __) => Container(
+              width: double.infinity,
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFD700).withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                    color: const Color(0xFFFFD700).withValues(alpha: 0.25)),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.monetization_on,
+                      color: Color(0xFFFFD700), size: 22),
+                  const SizedBox(width: 10),
+                  Text(
+                    'Tus monedas',
+                    style: TextStyle(color: t.textMuted, fontSize: 13),
                   ),
-                  overflow: TextOverflow.ellipsis,
-                ),
-                Text(
-                  _userEmail,
-                  style: const TextStyle(color: Colors.white38, fontSize: 12),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
+                  const Spacer(),
+                  Text(
+                    '$coins',
+                    style: TextStyle(
+                      color: Color(0xFFFFD700),
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
-          GestureDetector(
-            onTap: _cerrar,
-            child: const Icon(Icons.close, color: Colors.white38, size: 20),
           ),
         ],
       ),
@@ -274,15 +357,16 @@ class _EpicPanelState extends State<EpicPanel>
   }
 
   Widget _buildCodigoAmigo() {
+    final t = _t;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             'TU CÓDIGO DE AMIGO',
             style: TextStyle(
-              color: Colors.white38,
+              color: t.textMuted,
               fontSize: 11,
               fontWeight: FontWeight.bold,
               letterSpacing: 1.2,
@@ -302,7 +386,7 @@ class _EpicPanelState extends State<EpicPanel>
                 ),
                 child: Text(
                   _codigoAmigo ?? '------',
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: Color(0xFF22C55E),
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
@@ -336,15 +420,16 @@ class _EpicPanelState extends State<EpicPanel>
   }
 
   Widget _buildAddFriend() {
+    final t = _t;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             'AÑADIR AMIGO',
             style: TextStyle(
-              color: Colors.white38,
+              color: t.textMuted,
               fontSize: 11,
               fontWeight: FontWeight.bold,
               letterSpacing: 1.2,
@@ -357,19 +442,19 @@ class _EpicPanelState extends State<EpicPanel>
                 child: Container(
                   height: 40,
                   decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.05),
+                    color: t.cardBg,
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(
-                        color: Colors.white.withValues(alpha: 0.1)),
+                        color: t.cardBg),
                   ),
                   child: TextField(
                     controller: _codigoController,
                     textCapitalization: TextCapitalization.characters,
-                    style: const TextStyle(color: Colors.white, fontSize: 14),
-                    decoration: const InputDecoration(
+                    style: TextStyle(color: Colors.white, fontSize: 14),
+                    decoration: InputDecoration(
                       hintText: 'Código de amigo',
                       hintStyle:
-                          TextStyle(color: Colors.white24, fontSize: 13),
+                          TextStyle(color: t.textHint, fontSize: 13),
                       border: InputBorder.none,
                       contentPadding:
                           EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -393,10 +478,10 @@ class _EpicPanelState extends State<EpicPanel>
                           height: 16,
                           child: CircularProgressIndicator(
                               color: Colors.white, strokeWidth: 2))
-                      : const Center(
+                      : Center(
                           child: Text('Enviar',
                               style: TextStyle(
-                                  color: Colors.white,
+                                  color: t.textPrimary,
                                   fontWeight: FontWeight.bold,
                                   fontSize: 13))),
                 ),
@@ -409,6 +494,7 @@ class _EpicPanelState extends State<EpicPanel>
   }
 
   Widget _buildSolicitudes() {
+    final t = _t;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
       child: Column(
@@ -416,10 +502,10 @@ class _EpicPanelState extends State<EpicPanel>
         children: [
           Row(
             children: [
-              const Text(
+              Text(
                 'SOLICITUDES',
                 style: TextStyle(
-                  color: Colors.white38,
+                  color: t.textMuted,
                   fontSize: 11,
                   fontWeight: FontWeight.bold,
                   letterSpacing: 1.2,
@@ -435,8 +521,8 @@ class _EpicPanelState extends State<EpicPanel>
                 ),
                 child: Text(
                   '${_solicitudes.length}',
-                  style: const TextStyle(
-                      color: Colors.white,
+                  style: TextStyle(
+                      color: t.textPrimary,
                       fontSize: 10,
                       fontWeight: FontWeight.bold),
                 ),
@@ -453,7 +539,7 @@ class _EpicPanelState extends State<EpicPanel>
                     Expanded(
                       child: Text(
                         s['nom'] ?? 'Usuario',
-                        style: const TextStyle(
+                        style: TextStyle(
                             color: Colors.white, fontSize: 14),
                       ),
                     ),
@@ -499,6 +585,7 @@ class _EpicPanelState extends State<EpicPanel>
   }
 
   Widget _buildGrupos() {
+    final t = _t;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
       child: Column(
@@ -506,8 +593,8 @@ class _EpicPanelState extends State<EpicPanel>
         children: [
           Text(
             'MIS GRUPOS (${_grupos.length})',
-            style: const TextStyle(
-              color: Colors.white38,
+            style: TextStyle(
+              color: t.textMuted,
               fontSize: 11,
               fontWeight: FontWeight.bold,
               letterSpacing: 1.2,
@@ -515,8 +602,8 @@ class _EpicPanelState extends State<EpicPanel>
           ),
           const SizedBox(height: 8),
           if (_grupos.isEmpty)
-            const Text('Sin grupos todavía',
-                style: TextStyle(color: Colors.white38, fontSize: 13))
+            Text('Sin grupos todavía',
+                style: TextStyle(color: t.textMuted, fontSize: 13))
           else
             ..._grupos.map((g) => _buildGrupoItem(g)),
         ],
@@ -525,6 +612,7 @@ class _EpicPanelState extends State<EpicPanel>
   }
 
   Widget _buildGrupoItem(Map<String, dynamic> grupo) {
+    final t = _t;
     return GestureDetector(
       onTap: () {
         Navigator.pop(context);
@@ -543,14 +631,14 @@ class _EpicPanelState extends State<EpicPanel>
         margin: const EdgeInsets.only(bottom: 8),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.04),
+          color: t.cardBg,
           borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.07)),
+          border: Border.all(color: t.cardBg),
         ),
         child: Row(
           children: [
             Text(grupo['emoji'] ?? '👥',
-                style: const TextStyle(fontSize: 20)),
+                style: TextStyle(fontSize: 20)),
             const SizedBox(width: 10),
             Expanded(
               child: Column(
@@ -558,15 +646,15 @@ class _EpicPanelState extends State<EpicPanel>
                 children: [
                   Text(
                     grupo['nombreHabito'] ?? 'Grupo',
-                    style: const TextStyle(
-                        color: Colors.white,
+                    style: TextStyle(
+                        color: t.textPrimary,
                         fontSize: 13,
                         fontWeight: FontWeight.w500),
                   ),
                   Text(
                     '${(grupo['miembros'] as List?)?.length ?? 0} miembros',
-                    style: const TextStyle(
-                        color: Colors.white38, fontSize: 11),
+                    style: TextStyle(
+                        color: t.textMuted, fontSize: 11),
                   ),
                 ],
               ),
@@ -580,6 +668,7 @@ class _EpicPanelState extends State<EpicPanel>
   }
 
   Widget _buildAmigos() {
+    final t = _t;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
       child: Column(
@@ -587,8 +676,8 @@ class _EpicPanelState extends State<EpicPanel>
         children: [
           Text(
             'AMIGOS (${_amigos.length})',
-            style: const TextStyle(
-              color: Colors.white38,
+            style: TextStyle(
+              color: t.textMuted,
               fontSize: 11,
               fontWeight: FontWeight.bold,
               letterSpacing: 1.2,
@@ -596,8 +685,8 @@ class _EpicPanelState extends State<EpicPanel>
           ),
           const SizedBox(height: 8),
           if (_amigos.isEmpty)
-            const Text('Añade amigos con su código',
-                style: TextStyle(color: Colors.white38, fontSize: 13))
+            Text('Añade amigos con su código',
+                style: TextStyle(color: t.textMuted, fontSize: 13))
           else
             ..._amigos.map((a) => _buildAmigoItem(a)),
         ],
@@ -606,9 +695,11 @@ class _EpicPanelState extends State<EpicPanel>
   }
 
   Widget _buildAmigoItem(Map<String, dynamic> amigo) {
+    final t = _t;
     final uid = amigo['uid'] as String;
     final activo = _amigosActivos[uid] ?? false;
     final nombre = amigo['nom'] as String? ?? 'Usuario';
+    final foto = _fotoAmigos[uid];
 
     return GestureDetector(
       onTap: () {
@@ -627,15 +718,45 @@ class _EpicPanelState extends State<EpicPanel>
         margin: const EdgeInsets.only(bottom: 8),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.04),
+          color: t.cardBg,
           borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.07)),
+          border: Border.all(color: t.cardBg),
         ),
         child: Row(
           children: [
             Stack(
               children: [
-                _buildAvatar(nombre, const Color(0xFF6366F1)),
+                Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: activo
+                          ? const Color(0xFF22C55E).withValues(alpha: 0.5)
+                          : Colors.transparent,
+                      width: 1.5,
+                    ),
+                  ),
+                  child: ClipOval(
+                    child: foto != null
+                        ? _buildFotoWidget(foto, fallbackNombre: nombre)
+                        : Container(
+                            color: const Color(0xFF6366F1),
+                            child: Center(
+                              child: Text(
+                                nombre.isNotEmpty
+                                    ? nombre[0].toUpperCase()
+                                    : '?',
+                                style: TextStyle(
+                                    color: t.textPrimary,
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                          ),
+                  ),
+                ),
                 Positioned(
                   bottom: 0,
                   right: 0,
@@ -659,8 +780,8 @@ class _EpicPanelState extends State<EpicPanel>
                 children: [
                   Text(
                     nombre,
-                    style: const TextStyle(
-                        color: Colors.white,
+                    style: TextStyle(
+                        color: t.textPrimary,
                         fontSize: 13,
                         fontWeight: FontWeight.w500),
                   ),
@@ -676,7 +797,7 @@ class _EpicPanelState extends State<EpicPanel>
                 ],
               ),
             ),
-            const Icon(Icons.chevron_right, color: Colors.white24, size: 18),
+            Icon(Icons.chevron_right, color: t.textHint, size: 18),
           ],
         ),
       ),
@@ -684,6 +805,7 @@ class _EpicPanelState extends State<EpicPanel>
   }
 
   Widget _buildLogoutButton() {
+    final t = _t;
     return GestureDetector(
       onTap: _cerrarSesion,
       child: Container(
@@ -691,10 +813,10 @@ class _EpicPanelState extends State<EpicPanel>
         padding: const EdgeInsets.symmetric(vertical: 16),
         decoration: BoxDecoration(
           border: Border(
-              top: BorderSide(color: Colors.white.withValues(alpha: 0.08))),
+              top: BorderSide(color: t.cardBg)),
           color: Colors.transparent,
         ),
-        child: const Row(
+        child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(Icons.logout, color: Colors.redAccent, size: 18),
@@ -723,31 +845,56 @@ class _EpicPanelState extends State<EpicPanel>
       child: Center(
         child: Text(
           nombre.isNotEmpty ? nombre[0].toUpperCase() : '?',
-          style: const TextStyle(
+          style: TextStyle(
               color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
         ),
       ),
     );
   }
 
+  Widget _buildFotoWidget(String foto,
+      {required String fallbackNombre}) {
+    try {
+      if (foto.startsWith('data:image')) {
+        final base64Data = foto.split(',').last;
+        return Image.memory(
+          base64Decode(base64Data),
+          fit: BoxFit.cover,
+          errorBuilder: (_, __, ___) =>
+              _buildAvatar(fallbackNombre, const Color(0xFF6366F1)),
+        );
+      }
+      return Image.network(
+        foto,
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) =>
+            _buildAvatar(fallbackNombre, const Color(0xFF6366F1)),
+      );
+    } catch (_) {
+      return _buildAvatar(fallbackNombre, const Color(0xFF6366F1));
+    }
+  }
+
   Widget _buildDivider() {
+    final t = _t;
     return Divider(
-        height: 1, color: Colors.white.withValues(alpha: 0.07), thickness: 1);
+        height: 1, color: t.cardBg, thickness: 1);
   }
 
   Widget _buildIconBtn(IconData icon, VoidCallback onTap) {
+    final t = _t;
     return GestureDetector(
       onTap: onTap,
       child: Container(
         width: 36,
         height: 36,
         decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.06),
+          color: t.cardBg,
           borderRadius: BorderRadius.circular(8),
           border:
-              Border.all(color: Colors.white.withValues(alpha: 0.1)),
+              Border.all(color: t.cardBg),
         ),
-        child: Icon(icon, color: Colors.white54, size: 18),
+        child: Icon(icon, color: t.textMuted, size: 18),
       ),
     );
   }

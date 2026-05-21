@@ -5,7 +5,10 @@ import 'package:app_habitcrew/repositories/achievement_repository.dart';
 import 'package:app_habitcrew/servicios/achievement_service.dart';
 import 'package:app_habitcrew/servicios/coin_service.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../widgets/animated_background.dart';
+import 'package:app_habitcrew/Widgets/contrast_mode.dart';
+import 'package:app_habitcrew/Widgets/app_theme.dart';
 
 class AchievementsPage extends StatefulWidget {
   const AchievementsPage({super.key});
@@ -20,9 +23,12 @@ class _AchievementsPageState extends State<AchievementsPage> {
   List<AchievementCategory> _categories = [];
   bool _isLoading = true;
   String? _expandedCategoryId;
+  String _filterMode = 'todos';
 
   // IDs de logros cuyas monedas ya han sido reclamadas (cargado desde Firestore)
   Set<String> _claimedIds = {};
+
+  AppTheme get _t => AppTheme.fromContrast(ContrastMode.of(context));
 
   @override
   void initState() {
@@ -82,11 +88,33 @@ class _AchievementsPageState extends State<AchievementsPage> {
   }
 
   int get _longestStreak {
-    final constancia = _categories.where((c) => c.id == '1').firstOrNull;
-    if (constancia == null) return 0;
-    return constancia.achievements
-        .where((a) => a.isUnlocked)
-        .fold(0, (s, a) => a.currentValue > s ? a.currentValue : s);
+    // Solo considera logros de tipo 'racha' (no total_completados ni otros)
+    for (final cat in _categories) {
+      for (final a in cat.achievements) {
+        if (a.conditionType == 'racha') return a.currentValue;
+      }
+    }
+    return 0;
+  }
+
+  // Categorías filtradas según el modo activo
+  List<AchievementCategory> get _filteredCategories {
+    if (_filterMode == 'todos') return _categories;
+    return _categories.map((cat) {
+      final filtered = cat.achievements.where((a) {
+        if (_filterMode == 'desbloqueados') return a.isUnlocked;
+        if (_filterMode == 'por_reclamar') {
+          return a.isUnlocked && !_claimedIds.contains(a.id);
+        }
+        return true;
+      }).toList();
+      return AchievementCategory(
+        id: cat.id,
+        name: cat.name,
+        icon: cat.icon,
+        achievements: filtered,
+      );
+    }).where((cat) => cat.achievements.isNotEmpty).toList();
   }
 
   Future<void> _claimCoins(Achievement achievement) async {
@@ -145,20 +173,47 @@ class _AchievementsPageState extends State<AchievementsPage> {
     );
   }
 
+  // Copia al portapapeles un mensaje listo para compartir
+  void _shareAchievement(Achievement achievement) {
+    final text = '🏆 ¡Acabo de desbloquear "${achievement.title}" en HabitCrew!\n'
+        '${achievement.description}\n\n'
+        '#HabitCrew #Logros';
+    Clipboard.setData(ClipboardData(text: text));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: const Row(
+          children: [
+            Icon(Icons.check_circle, color: Colors.white, size: 18),
+            SizedBox(width: 8),
+            Expanded(
+              child: Text('¡Copiado! Pégalo donde quieras compartirlo 📋'),
+            ),
+          ],
+        ),
+        backgroundColor: const Color(0xFF22C55E),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        duration: const Duration(seconds: 2),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final isContrast = ContrastMode.of(context);
+    final t = AppTheme.fromContrast(isContrast);
     return AnimatedBackground(
       child: Scaffold(
         backgroundColor: Colors.transparent,
         appBar: AppBar(
-          title: const Text(
+          title: Text(
             'Mis Logros',
-            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+            style: TextStyle(color: t.textPrimary, fontWeight: FontWeight.bold),
           ),
           centerTitle: true,
           backgroundColor: Colors.transparent,
           elevation: 0,
-          foregroundColor: Colors.white,
+          foregroundColor: t.textPrimary,
           actions: [
             Padding(
               padding: const EdgeInsets.only(right: 16),
@@ -169,8 +224,8 @@ class _AchievementsPageState extends State<AchievementsPage> {
                   const SizedBox(width: 4),
                   Text(
                     '${CoinService.instance.coins}',
-                    style: const TextStyle(
-                      color: Colors.white,
+                    style: TextStyle(
+                      color: t.textPrimary,
                       fontWeight: FontWeight.bold,
                       fontSize: 16,
                     ),
@@ -193,7 +248,9 @@ class _AchievementsPageState extends State<AchievementsPage> {
                     const SizedBox(height: 16),
                     _buildSummaryCard(),
                     const SizedBox(height: 16),
-                    ..._categories.map(_buildCategoryCard),
+                    _buildFilterBar(),
+                    const SizedBox(height: 12),
+                    ..._filteredCategories.map(_buildCategoryCard),
                   ],
                 ),
               ),
@@ -201,8 +258,121 @@ class _AchievementsPageState extends State<AchievementsPage> {
     );
   }
 
+  // ─── BARRA DE FILTROS ─────────────────────────────────────────────
+  Widget _buildFilterBar() {
+    const filters = [
+      ('todos', 'Todos', Icons.apps),
+      ('desbloqueados', 'Desbloqueados', Icons.lock_open),
+      ('por_reclamar', 'Por reclamar', Icons.redeem),
+    ];
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: filters.map((f) {
+          final isSelected = _filterMode == f.$1;
+          return Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: GestureDetector(
+              onTap: () => setState(() => _filterMode = f.$1),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                decoration: BoxDecoration(
+                  color: isSelected
+                      ? const Color(0xFF22C55E).withOpacity(0.25)
+                      : Colors.white.withOpacity(0.07),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: isSelected
+                        ? const Color(0xFF22C55E).withOpacity(0.6)
+                        : Colors.white.withOpacity(0.15),
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      f.$3,
+                      size: 14,
+                      color: isSelected
+                          ? const Color(0xFF22C55E)
+                          : Colors.white60,
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      f.$2,
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight:
+                            isSelected ? FontWeight.bold : FontWeight.normal,
+                        color: isSelected
+                            ? const Color(0xFF22C55E)
+                            : Colors.white60,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+
+  // ─── TIER BADGE (Bronce / Plata / Oro / Platino) ─────────────────
+  Widget _buildTierBadge(int coins) {
+    final Color color;
+    final String label;
+    final IconData icon;
+
+    if (coins >= 500) {
+      color = const Color(0xFF67E8F9);
+      label = 'Platino';
+      icon = Icons.diamond;
+    } else if (coins >= 150) {
+      color = const Color(0xFFFFD700);
+      label = 'Oro';
+      icon = Icons.workspace_premium;
+    } else if (coins >= 50) {
+      color = Colors.white70;
+      label = 'Plata';
+      icon = Icons.military_tech;
+    } else {
+      color = const Color(0xFFCD7F32);
+      label = 'Bronce';
+      icon = Icons.shield;
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.12),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: color.withOpacity(0.35)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 10, color: color),
+          const SizedBox(width: 3),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 9,
+              color: color,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   // ─── SECCIÓN DE ESTADÍSTICAS ─────────────────────────────────────
   Widget _buildStatsSection() {
+    final t = _t;
     final best = _bestCategory;
     final pct = _totalAchievements > 0
         ? ((_unlockedAchievements / _totalAchievements) * 100).round()
@@ -211,14 +381,14 @@ class _AchievementsPageState extends State<AchievementsPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Padding(
-          padding: EdgeInsets.only(left: 4, bottom: 12),
+        Padding(
+          padding: const EdgeInsets.only(left: 4, bottom: 12),
           child: Text(
             'Estadísticas',
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
-              color: Colors.white,
+              color: t.textPrimary,
             ),
           ),
         ),
@@ -295,12 +465,14 @@ class _AchievementsPageState extends State<AchievementsPage> {
     required String value,
     required String label,
   }) {
+    final t = _t;
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.07),
+        color: t.cardBg,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.white.withOpacity(0.08)),
+        border: Border.all(color: t.cardBorder),
+        boxShadow: t.cardShadow,
       ),
       child: Column(
         children: [
@@ -308,10 +480,10 @@ class _AchievementsPageState extends State<AchievementsPage> {
           const SizedBox(height: 6),
           Text(
             value,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.bold,
-              color: Colors.white,
+              color: t.textPrimary,
             ),
             textAlign: TextAlign.center,
             maxLines: 1,
@@ -320,7 +492,7 @@ class _AchievementsPageState extends State<AchievementsPage> {
           const SizedBox(height: 2),
           Text(
             label,
-            style: const TextStyle(fontSize: 10, color: Colors.white54),
+            style: TextStyle(fontSize: 10, color: t.textMuted),
             textAlign: TextAlign.center,
           ),
         ],
@@ -330,24 +502,25 @@ class _AchievementsPageState extends State<AchievementsPage> {
 
   // ─── RESUMEN SUPERIOR ────────────────────────────────────────────
   Widget _buildSummaryCard() {
+    final t = _t;
     final total = _totalAchievements;
     final unlocked = _unlockedAchievements;
     final percent = total > 0 ? ((unlocked / total) * 100).round() : 0;
 
     return Card(
       elevation: 3,
-      color: Colors.white.withOpacity(0.08),
+      color: t.cardBg,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: Padding(
         padding: const EdgeInsets.all(20),
         child: Column(
           children: [
-            const Text(
+            Text(
               'Progreso Total',
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
-                color: Colors.white,
+                color: t.textPrimary,
               ),
             ),
             const SizedBox(height: 16),
@@ -365,7 +538,7 @@ class _AchievementsPageState extends State<AchievementsPage> {
               child: LinearProgressIndicator(
                 value: total > 0 ? unlocked / total : 0,
                 minHeight: 10,
-                backgroundColor: Colors.white12,
+                backgroundColor: t.progressBg,
                 valueColor: const AlwaysStoppedAnimation<Color>(
                   Color(0xFF22C55E),
                 ),
@@ -384,10 +557,10 @@ class _AchievementsPageState extends State<AchievementsPage> {
                     style: const TextStyle(fontWeight: FontWeight.bold),
                   ),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF22C55E).withOpacity(0.25),
+                    backgroundColor: const Color(0xFF22C55E).withValues(alpha: 0.25),
                     foregroundColor: Colors.white,
                     side: BorderSide(
-                        color: const Color(0xFF22C55E).withOpacity(0.6)),
+                        color: const Color(0xFF22C55E).withValues(alpha: 0.6)),
                     padding: const EdgeInsets.symmetric(vertical: 12),
                     shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12)),
@@ -402,27 +575,27 @@ class _AchievementsPageState extends State<AchievementsPage> {
   }
 
   Widget _buildStat(String label, String value, Color color) {
+    final t = _t;
     return Column(
       children: [
         Text(
           value,
-          style: TextStyle(
-              fontSize: 26, fontWeight: FontWeight.bold, color: color),
+          style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: color),
         ),
         const SizedBox(height: 4),
-        Text(label,
-            style: const TextStyle(fontSize: 12, color: Colors.white60)),
+        Text(label, style: TextStyle(fontSize: 12, color: t.textMuted)),
       ],
     );
   }
 
   // ─── TARJETA DE CATEGORÍA ────────────────────────────────────────
   Widget _buildCategoryCard(AchievementCategory category) {
+    final t = _t;
     final isExpanded = _expandedCategoryId == category.id;
 
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
-      color: Colors.white.withOpacity(0.08),
+      color: t.cardBg,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: Column(
         children: [
@@ -437,7 +610,7 @@ class _AchievementsPageState extends State<AchievementsPage> {
                 children: [
                   CircleAvatar(
                     backgroundColor:
-                        const Color(0xFF22C55E).withOpacity(0.15),
+                        const Color(0xFF22C55E).withValues(alpha: 0.15),
                     child:
                         Icon(category.icon, color: const Color(0xFF22C55E)),
                   ),
@@ -448,22 +621,21 @@ class _AchievementsPageState extends State<AchievementsPage> {
                       children: [
                         Text(
                           category.name,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
-                            color: Colors.white,
+                            color: t.textPrimary,
                           ),
                         ),
                         const SizedBox(height: 4),
                         Text(
                           '${category.unlockedAchievements}/${category.totalAchievements} desbloqueados',
-                          style: const TextStyle(
-                              fontSize: 12, color: Colors.white60),
+                          style: TextStyle(fontSize: 12, color: t.textMuted),
                         ),
                         const SizedBox(height: 8),
                         LinearProgressIndicator(
                           value: category.completionPercentage,
-                          backgroundColor: Colors.white12,
+                          backgroundColor: t.progressBg,
                           valueColor: const AlwaysStoppedAnimation<Color>(
                             Color(0xFF22C55E),
                           ),
@@ -474,14 +646,14 @@ class _AchievementsPageState extends State<AchievementsPage> {
                   const SizedBox(width: 8),
                   Icon(
                     isExpanded ? Icons.expand_less : Icons.expand_more,
-                    color: Colors.white60,
+                    color: t.textMuted,
                   ),
                 ],
               ),
             ),
           ),
           if (isExpanded) ...[
-            Divider(height: 1, color: Colors.white12),
+            Divider(height: 1, color: t.divider),
             ...category.achievements.map(_buildAchievementTile),
           ],
         ],
@@ -491,7 +663,8 @@ class _AchievementsPageState extends State<AchievementsPage> {
 
   // ─── LOGRO INDIVIDUAL ────────────────────────────────────────────
   Widget _buildAchievementTile(Achievement achievement) {
-    final color = achievement.isUnlocked ? Colors.amber : Colors.white38;
+    final t = _t;
+    final color = achievement.isUnlocked ? Colors.amber : t.textHint;
     final isClaimed = _claimedIds.contains(achievement.id);
 
     return InkWell(
@@ -505,7 +678,7 @@ class _AchievementsPageState extends State<AchievementsPage> {
           children: [
             // Ícono
             CircleAvatar(
-              backgroundColor: color.withOpacity(0.15),
+              backgroundColor: color.withValues(alpha: 0.15),
               child: Icon(achievement.icon, color: color, size: 20),
             ),
             const SizedBox(width: 12),
@@ -514,7 +687,7 @@ class _AchievementsPageState extends State<AchievementsPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Título + badge de monedas
+                  // Título + tier + badge de monedas
                   Row(
                     children: [
                       Expanded(
@@ -522,20 +695,20 @@ class _AchievementsPageState extends State<AchievementsPage> {
                           achievement.title,
                           style: TextStyle(
                             fontWeight: FontWeight.w600,
-                            color: achievement.isUnlocked
-                                ? Colors.white
-                                : Colors.white38,
+                            color: achievement.isUnlocked ? t.textPrimary : t.textMuted,
                           ),
                         ),
                       ),
+                      _buildTierBadge(achievement.coinReward),
+                      const SizedBox(width: 4),
                       Container(
                         padding: const EdgeInsets.symmetric(
                             horizontal: 8, vertical: 2),
                         decoration: BoxDecoration(
-                          color: const Color(0xFFFFD700).withOpacity(0.12),
+                          color: const Color(0xFFFFD700).withValues(alpha: 0.12),
                           borderRadius: BorderRadius.circular(20),
                           border: Border.all(
-                            color: const Color(0xFFFFD700).withOpacity(0.3),
+                            color: const Color(0xFFFFD700).withValues(alpha: 0.3),
                           ),
                         ),
                         child: Row(
@@ -561,41 +734,78 @@ class _AchievementsPageState extends State<AchievementsPage> {
                   // Descripción
                   Text(
                     achievement.description,
-                    style:
-                        const TextStyle(fontSize: 12, color: Colors.white54),
+                    style: TextStyle(fontSize: 12, color: t.textMuted),
                   ),
                   const SizedBox(height: 8),
-                  // Estado / progreso / reclamar
+                  // Estado / progreso / reclamar / compartir
                   if (!achievement.isUnlocked) ...[
                     Text(
                       '${achievement.currentValue} / ${achievement.targetValue}',
-                      style: const TextStyle(
-                          fontSize: 11, color: Colors.white38),
+                      style: TextStyle(fontSize: 11, color: t.textMuted),
                     ),
                     const SizedBox(height: 4),
                     LinearProgressIndicator(
                       value: achievement.progress,
-                      backgroundColor: Colors.white12,
+                      backgroundColor: t.progressBg,
                       valueColor: const AlwaysStoppedAnimation<Color>(
                           Color(0xFF22C55E)),
                     ),
                   ] else if (isClaimed) ...[
                     Text(
-                      '✅ Desbloqueado el ${_formatDate(achievement.unlockedDate ?? DateTime.now())}',
+                      '✅ Desbloqueado ${_formatRelativeDate(achievement.unlockedDate ?? DateTime.now())}',
                       style: TextStyle(
                         fontSize: 11,
                         color: Colors.green[300],
                         fontStyle: FontStyle.italic,
                       ),
                     ),
-                    const SizedBox(height: 2),
-                    const Text(
-                      '🪙 Monedas ya reclamadas · Toca para celebrar 🎉',
-                      style: TextStyle(fontSize: 10, color: Colors.white24),
+                    const SizedBox(height: 6),
+                    Row(
+                      children: [
+                        const Expanded(
+                          child: Text(
+                            '🪙 Monedas reclamadas · Toca para celebrar 🎉',
+                            style: TextStyle(fontSize: 10, color: Colors.white24),
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        // Botón Compartir
+                        GestureDetector(
+                          onTap: () => _shareAchievement(achievement),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 10, vertical: 5),
+                            decoration: BoxDecoration(
+                              color: Colors.blueAccent.withOpacity(0.15),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(
+                                color: Colors.blueAccent.withOpacity(0.4),
+                              ),
+                            ),
+                            child: const Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.share,
+                                    size: 13,
+                                    color: Colors.lightBlueAccent),
+                                SizedBox(width: 4),
+                                Text(
+                                  'Compartir',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: Colors.lightBlueAccent,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ] else ...[
                     Text(
-                      '✅ Desbloqueado el ${_formatDate(achievement.unlockedDate ?? DateTime.now())}',
+                      '✅ Desbloqueado ${_formatRelativeDate(achievement.unlockedDate ?? DateTime.now())}',
                       style: TextStyle(
                         fontSize: 11,
                         color: Colors.green[300],
@@ -667,7 +877,13 @@ class _AchievementsPageState extends State<AchievementsPage> {
     );
   }
 
-  String _formatDate(DateTime date) {
-    return '${date.day}/${date.month}/${date.year}';
+  String _formatRelativeDate(DateTime date) {
+    final now = DateTime.now();
+    final diff = now.difference(date);
+    if (diff.inDays == 0) return 'hoy';
+    if (diff.inDays == 1) return 'ayer';
+    if (diff.inDays < 7) return 'hace ${diff.inDays} días';
+    if (diff.inDays < 30) return 'hace ${(diff.inDays / 7).floor()} sem.';
+    return 'el ${date.day}/${date.month}/${date.year}';
   }
 }

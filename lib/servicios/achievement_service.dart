@@ -2,6 +2,7 @@ import 'package:app_habitcrew/Screen/models/archievement.dart';
 import 'package:app_habitcrew/Screen/models/archievement_category.dart';
 import 'package:app_habitcrew/repositories/achievement_repository.dart';
 import 'package:app_habitcrew/servicios/achievement_definitions.dart';
+import 'package:app_habitcrew/servicios/achievement_seeder.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
@@ -16,11 +17,6 @@ class AchievementService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final _repo = AchievementRepository();
 
-  // IDs de logros de tienda que usan saldo actual (no numCompras)
-  static const _shopBalanceIds = {'f9', 'f10', 'f11', 'f12', 'f13', 'f14', 'f15'};
-  // IDs de logros de progreso que usan numHabitos (creación, no completados)
-  static const _habitCreationIds = {'b1', 'b2', 'b3', 'b13', 'b14', 'b15'};
-
   String? get _uid => _auth.currentUser?.uid;
 
   // Delegado a AchievementDefinition para compatibilidad con callers externos.
@@ -34,13 +30,16 @@ class AchievementService {
   /// Actualiza `totalLogros` en el documento del usuario.
   /// Devuelve: (categorías fusionadas, IDs de logros ya reclamados)
   Future<(List<AchievementCategory>, Set<String>)> loadUserAchievements() async {
+    // Siembra el catálogo en Firestore si aún no se ha hecho.
+    await AchievementSeeder.instance.seedIfNeeded();
+
     final uid = _uid;
     if (uid == null) {
       final catalog = await _repo.getCategories();
       return (catalog, <String>{});
     }
 
-    // ── 1. Catálogo estático ─────────────────────────────────────────────
+    // ── 1. Catálogo desde Firestore ──────────────────────────────────────
     final catalog = await _repo.getCategories();
 
     try {
@@ -75,31 +74,28 @@ class AchievementService {
 
       // ── 4. Mejor racha y número de hábitos ──────────────────────────────
       final numHabitos = habitosSnap.docs.length;
-      int mejorRacha = 0;
-      for (final doc in habitosSnap.docs) {
-        final d = doc.data();
-        final record = (d['recordRacha'] as num?)?.toInt() ?? 0;
-        final actual = (d['rachaActual'] as num?)?.toInt() ?? 0;
-        final best = record > actual ? record : actual;
-        if (best > mejorRacha) mejorRacha = best;
-      }
+      final rachaGlobalActual = (userData['rachaGlobalActual'] as num?)?.toInt() ?? 0;
+      final recordRachaGlobal = (userData['recordRachaGlobal'] as num?)?.toInt() ?? 0;
+      final mejorRacha = recordRachaGlobal > rachaGlobalActual ? recordRachaGlobal : rachaGlobalActual;
 
       // ── 5. Estados guardados en subcol. logros ───────────────────────────
       final savedLogros = {
         for (final doc in logrosSnap.docs) doc.id: doc.data()
       };
 
-      // ── 6. Función de métrica por logro ──────────────────────────────────
+      // ── 6. Función de métrica por logro (usa conditionType de Firestore) ──
       int currentFor(Achievement a) {
-        switch (a.categoryId) {
-          case '1': return mejorRacha;
-          case '2': return _habitCreationIds.contains(a.id) ? numHabitos : totalCompletados;
-          case '3': return diasPerfectos;
-          case '4': return 0;
-          case '5': return monedasGanadas;
-          case '6': return _shopBalanceIds.contains(a.id) ? currentMonedas : numCompras;
-          case '7': return diasDesdeRegistro;
-          default:  return 0;
+        switch (a.conditionType) {
+          case 'racha':             return mejorRacha;
+          case 'total_completados': return totalCompletados;
+          case 'num_habitos':       return numHabitos;
+          case 'dias_perfectos':    return diasPerfectos;
+          case 'amigos':            return 0;
+          case 'monedas_ganadas':   return monedasGanadas;
+          case 'num_compras':       return numCompras;
+          case 'monedas_actuales':  return currentMonedas;
+          case 'dias_registro':     return diasDesdeRegistro;
+          default:                  return 0;
         }
       }
 
@@ -248,13 +244,10 @@ class AchievementService {
       final habitosSnap = results[1] as QuerySnapshot;
       final userData    = userDoc.data() as Map<String, dynamic>? ?? {};
 
-      int mejorRacha = 0;
-      int numHabitos = habitosSnap.docs.length;
-      for (final doc in habitosSnap.docs) {
-        final data = doc.data() as Map<String, dynamic>;
-        final racha = (data['recordRacha'] as num?)?.toInt() ?? 0;
-        if (racha > mejorRacha) mejorRacha = racha;
-      }
+      final int numHabitos = habitosSnap.docs.length;
+      final int rachaGlobalActual2 = (userData['rachaGlobalActual'] as num?)?.toInt() ?? 0;
+      final int recordRachaGlobal2 = (userData['recordRachaGlobal'] as num?)?.toInt() ?? 0;
+      final int mejorRacha = recordRachaGlobal2 > rachaGlobalActual2 ? recordRachaGlobal2 : rachaGlobalActual2;
 
       return {
         'totalCompletados': (userData['totalHabitosCompletados'] as num?)?.toInt() ?? 0,
@@ -284,10 +277,8 @@ class AchievementService {
 
       final tieneBannerBeta = itemsCofre.any(
           (i) => i['tipo'] == 'banner' && i['nombre'] == 'Beta');
-      final tieneAvatarBeta = itemsCofre.any(
-          (i) => i['tipo'] == 'avatar' && i['nombre'] == 'Beta');
 
-      if (desbloqueados.contains('beta') && tieneBannerBeta && tieneAvatarBeta) return;
+      if (desbloqueados.contains('beta') && tieneBannerBeta) return;
 
       final updates = <String, dynamic>{};
 
@@ -302,14 +293,6 @@ class AchievementService {
           'tipo': 'banner',
           'nombre': 'Beta',
           'emoji': '🚀',
-          'fecha': Timestamp.now(),
-        });
-      }
-      if (!tieneAvatarBeta) {
-        itemsNuevos.add({
-          'tipo': 'avatar',
-          'nombre': 'Beta',
-          'emoji': 'β',
           'fecha': Timestamp.now(),
         });
       }
@@ -366,9 +349,9 @@ class AchievementService {
     }
 
     if (nuevosDesbloqueados.isNotEmpty) {
-      final monedas = nuevosDesbloqueados.fold<int>(0, (sum, id) {
+      final monedas = nuevosDesbloqueados.fold<int>(0, (acc, id) {
         final def = allAchievements.firstWhere((a) => a.id == id);
-        return sum + def.coinReward;
+        return acc + def.coinReward;
       });
 
       final batch = _firestore.batch();
@@ -444,21 +427,6 @@ class AchievementService {
         {'bannerEquipado': null});
   }
 
-  /// Equipa un avatar en el perfil.
-  Future<void> equiparAvatar(String nombre) async {
-    final uid = _uid;
-    if (uid == null) return;
-    await _firestore.collection('usuaris').doc(uid).set(
-        {'avatarEquipado': nombre}, SetOptions(merge: true));
-  }
-
-  /// Desequipa el avatar.
-  Future<void> desequiparAvatar() async {
-    final uid = _uid;
-    if (uid == null) return;
-    await _firestore.collection('usuaris').doc(uid).update(
-        {'avatarEquipado': null});
-  }
 
   /// Stream de datos del usuario para actualizar insignias en tiempo real.
   Stream<DocumentSnapshot> streamUsuario() {

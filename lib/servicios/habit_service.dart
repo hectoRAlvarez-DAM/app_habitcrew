@@ -165,24 +165,23 @@ class HabitService {
     final userRef = _firestore.collection('usuaris').doc(uid);
 
     if (habit.completadoHoy) {
-      // Desmarcar
+      // ── DESMARCAR ─────────────────────────────────────────────────────────
+      final ahora = DateTime.now();
       if (habit.rachaActual <= 1) {
         await docRef.update({'fechaUltimoCompletado': null, 'rachaActual': 0});
       } else {
-        final yesterday = DateTime.now().subtract(const Duration(days: 1));
+        final yesterday = ahora.subtract(const Duration(days: 1));
         await docRef.update({
           'fechaUltimoCompletado': Timestamp.fromDate(yesterday),
           'rachaActual': habit.rachaActual - 1,
         });
       }
-      if (habit.totalCompletados > 0) {
-        await docRef.update({'totalCompletados': FieldValue.increment(-1)});
-        await userRef.update({
-          'totalHabitosCompletados': FieldValue.increment(-1),
-        });
-      }
+      // completadoHoy garantiza que totalCompletados >= 1 en Firestore
+      await docRef.update({'totalCompletados': FieldValue.increment(-1)});
+      await userRef.update({
+        'totalHabitosCompletados': FieldValue.increment(-1),
+      });
       // Eliminar del historial el registro de hoy
-      final ahora = DateTime.now();
       final hoyStr = '${ahora.year}-${ahora.month}-${ahora.day}';
       final snap = await docRef.get();
       final historial =
@@ -193,8 +192,39 @@ class HabitService {
         return '${f.year}-${f.month}-${f.day}' == hoyStr;
       });
       await docRef.update({'historial': historial});
+
+      // Racha global: revertir solo si ningún otro hábito fue completado hoy
+      final allSnap = await ref.get();
+      final otroCompletadoHoy = allSnap.docs.any((doc) {
+        if (doc.id == habit.id) return false;
+        final data = doc.data();
+        final ts = data['fechaUltimoCompletado'] as Timestamp?;
+        if (ts == null) return false;
+        final fecha = ts.toDate();
+        return fecha.year == ahora.year &&
+            fecha.month == ahora.month &&
+            fecha.day == ahora.day;
+      });
+
+      if (!otroCompletadoHoy) {
+        final userSnap = await userRef.get();
+        final ud = userSnap.data() ?? {};
+        final rachaGlobal = (ud['rachaGlobalActual'] as num?)?.toInt() ?? 0;
+        if (rachaGlobal <= 1) {
+          await userRef.set(
+            {'rachaGlobalActual': 0, 'fechaUltimaActividad': null},
+            SetOptions(merge: true),
+          );
+        } else {
+          final ayer = ahora.subtract(const Duration(days: 1));
+          await userRef.set({
+            'rachaGlobalActual': rachaGlobal - 1,
+            'fechaUltimaActividad': Timestamp.fromDate(ayer),
+          }, SetOptions(merge: true));
+        }
+      }
     } else {
-      // Marcar como completado
+      // ── MARCAR COMO COMPLETADO ────────────────────────────────────────────
       final ahora = DateTime.now();
       int nuevaRacha = 1;
 
@@ -223,6 +253,36 @@ class HabitService {
         {'totalHabitosCompletados': FieldValue.increment(1)},
         SetOptions(merge: true),
       );
+
+      // Racha global: +1 solo si este es el primer hábito completado hoy
+      final userSnap = await userRef.get();
+      final ud = userSnap.data() ?? {};
+      final fechaUltimaActividad =
+          (ud['fechaUltimaActividad'] as Timestamp?)?.toDate();
+      int rachaGlobal = (ud['rachaGlobalActual'] as num?)?.toInt() ?? 0;
+      int recordGlobal = (ud['recordRachaGlobal'] as num?)?.toInt() ?? 0;
+
+      final hoyDia = DateTime(ahora.year, ahora.month, ahora.day);
+      final yaContadoHoy = fechaUltimaActividad != null &&
+          DateTime(fechaUltimaActividad.year, fechaUltimaActividad.month,
+                  fechaUltimaActividad.day) ==
+              hoyDia;
+
+      if (!yaContadoHoy) {
+        final ayerDia = hoyDia.subtract(const Duration(days: 1));
+        final eraAyer = fechaUltimaActividad != null &&
+            DateTime(fechaUltimaActividad.year, fechaUltimaActividad.month,
+                    fechaUltimaActividad.day) ==
+                ayerDia;
+        rachaGlobal = eraAyer ? rachaGlobal + 1 : 1;
+        if (rachaGlobal > recordGlobal) recordGlobal = rachaGlobal;
+
+        await userRef.set({
+          'rachaGlobalActual': rachaGlobal,
+          'recordRachaGlobal': recordGlobal,
+          'fechaUltimaActividad': Timestamp.fromDate(ahora),
+        }, SetOptions(merge: true));
+      }
 
       // Comprobar logros nuevos en background
       AchievementService.instance.comprobarLogros();
