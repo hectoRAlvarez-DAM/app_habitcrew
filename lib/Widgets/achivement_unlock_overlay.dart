@@ -1,6 +1,7 @@
 import 'dart:math';
 import 'package:app_habitcrew/Screen/models/archievement.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:confetti/confetti.dart';
 import '../widgets/animated_background.dart';
 
@@ -72,6 +73,7 @@ class _AchievementOverlayContentState
   late AnimationController _iconController;
   late Animation<double> _iconScale;
   late Animation<double> _fadeAnimation;
+  bool _copied = false;
 
   @override
   void initState() {
@@ -97,6 +99,19 @@ class _AchievementOverlayContentState
   void dispose() {
     _iconController.dispose();
     super.dispose();
+  }
+
+  void _onShare() {
+    final text = '🏆 ¡Acabo de desbloquear "${widget.achievement.title}" en HabitCrew!\n'
+        '${widget.achievement.description}\n\n'
+        '#HabitCrew #Logros';
+    Clipboard.setData(ClipboardData(text: text)).then((_) {
+      if (!mounted) return;
+      setState(() => _copied = true);
+      Future.delayed(const Duration(seconds: 2), () {
+        if (mounted) setState(() => _copied = false);
+      });
+    });
   }
 
   @override
@@ -327,7 +342,42 @@ class _AchievementOverlayContentState
                               ],
                             ),
                           ),
-                        const SizedBox(height: 24),
+                        const SizedBox(height: 16),
+
+                        // ─── Botón Compartir ────────────────────
+                        if (widget.achievement.id != '_summary')
+                          SizedBox(
+                            width: double.infinity,
+                            child: OutlinedButton.icon(
+                              onPressed: _onShare,
+                              icon: Icon(
+                                _copied ? Icons.check_circle : Icons.share,
+                                size: 16,
+                              ),
+                              label: Text(
+                                _copied
+                                    ? '¡Copiado al portapapeles!'
+                                    : 'Compartir con amigos',
+                                style: const TextStyle(fontSize: 14),
+                              ),
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: _copied
+                                    ? Colors.greenAccent
+                                    : Colors.lightBlueAccent,
+                                side: BorderSide(
+                                  color: _copied
+                                      ? Colors.greenAccent.withOpacity(0.7)
+                                      : Colors.lightBlueAccent.withOpacity(0.6),
+                                ),
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 12),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                            ),
+                          ),
+                        const SizedBox(height: 12),
 
                         // ─── Botón cerrar ───────────────────────
                         SizedBox(
