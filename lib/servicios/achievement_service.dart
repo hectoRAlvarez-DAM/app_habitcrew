@@ -74,14 +74,9 @@ class AchievementService {
 
       // ── 4. Mejor racha y número de hábitos ──────────────────────────────
       final numHabitos = habitosSnap.docs.length;
-      int mejorRacha = 0;
-      for (final doc in habitosSnap.docs) {
-        final d = doc.data();
-        final record = (d['recordRacha'] as num?)?.toInt() ?? 0;
-        final actual = (d['rachaActual'] as num?)?.toInt() ?? 0;
-        final best = record > actual ? record : actual;
-        if (best > mejorRacha) mejorRacha = best;
-      }
+      final rachaGlobalActual = (userData['rachaGlobalActual'] as num?)?.toInt() ?? 0;
+      final recordRachaGlobal = (userData['recordRachaGlobal'] as num?)?.toInt() ?? 0;
+      final mejorRacha = recordRachaGlobal > rachaGlobalActual ? recordRachaGlobal : rachaGlobalActual;
 
       // ── 5. Estados guardados en subcol. logros ───────────────────────────
       final savedLogros = {
@@ -249,13 +244,10 @@ class AchievementService {
       final habitosSnap = results[1] as QuerySnapshot;
       final userData    = userDoc.data() as Map<String, dynamic>? ?? {};
 
-      int mejorRacha = 0;
-      int numHabitos = habitosSnap.docs.length;
-      for (final doc in habitosSnap.docs) {
-        final data = doc.data() as Map<String, dynamic>;
-        final racha = (data['recordRacha'] as num?)?.toInt() ?? 0;
-        if (racha > mejorRacha) mejorRacha = racha;
-      }
+      final int numHabitos = habitosSnap.docs.length;
+      final int rachaGlobalActual2 = (userData['rachaGlobalActual'] as num?)?.toInt() ?? 0;
+      final int recordRachaGlobal2 = (userData['recordRachaGlobal'] as num?)?.toInt() ?? 0;
+      final int mejorRacha = recordRachaGlobal2 > rachaGlobalActual2 ? recordRachaGlobal2 : rachaGlobalActual2;
 
       return {
         'totalCompletados': (userData['totalHabitosCompletados'] as num?)?.toInt() ?? 0,

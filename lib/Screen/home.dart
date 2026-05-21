@@ -30,6 +30,8 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
   final HabitService _habitService = HabitService();
   List<Habit> _habitos = [];
   StreamSubscription<List<Habit>>? _habitSub;
+  StreamSubscription? _userSub;
+  int _rachaGlobal = 0;
 
   HabitFilter _filtroActivo = HabitFilter.diario;
 
@@ -76,11 +78,21 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
       onError: (e) => debugPrint('Error stream hábitos: $e'),
       cancelOnError: false,
     );
+
+    _userSub = AchievementService.instance.streamUsuario().listen((doc) {
+      if (!mounted) return;
+      final data = doc.data() as Map<String, dynamic>?;
+      if (data == null) return;
+      final actual = (data['rachaGlobalActual'] as num?)?.toInt() ?? 0;
+      final record = (data['recordRachaGlobal'] as num?)?.toInt() ?? 0;
+      setState(() => _rachaGlobal = actual > record ? actual : record);
+    });
   }
 
   @override
   void dispose() {
     _habitSub?.cancel();
+    _userSub?.cancel();
     _fadeController.dispose();
     super.dispose();
   }
@@ -334,11 +346,7 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
         .toList();
   }
 
-  int get _mejorRacha => _habitosFiltrados.isEmpty
-      ? 0
-      : _habitosFiltrados
-          .map((h) => h.rachaActual)
-          .reduce((a, b) => a > b ? a : b);
+  int get _mejorRacha => _rachaGlobal;
 
   int get _completadosHoy =>
       _habitosFiltrados.where((h) => h.completadoHoy).length;
