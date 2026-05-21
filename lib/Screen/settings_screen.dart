@@ -95,14 +95,7 @@ class SettingsScreen extends StatelessWidget {
                               textColor: textPrimary,
                               onTap: () => Navigator.pop(context),
                             ),
-                            Divider(color: divider, height: 1),
-                            _SettingsRow(
-                              icon: Icons.notifications_outlined,
-                              iconColor: const Color(0xFF3B82F6),
-                              label: 'Notificaciones',
-                              textColor: textPrimary,
-                              onTap: () {},
-                            ),
+
                           ],
                         ),
                       ),

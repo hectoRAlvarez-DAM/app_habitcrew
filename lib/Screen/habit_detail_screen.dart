@@ -7,7 +7,6 @@ import 'package:app_habitcrew/Widgets/glassmorphism_card.dart';
 import 'package:app_habitcrew/Screen/models/habit.dart';
 import 'package:app_habitcrew/servicios/habit_service.dart';
 import 'package:app_habitcrew/servicios/group_service.dart';
-import 'package:app_habitcrew/Screen/notification_settings_screen.dart';
 
 class HabitDetailScreen extends StatefulWidget {
   final Habit habit;
@@ -482,53 +481,6 @@ class _HabitDetailScreenState extends State<HabitDetailScreen> {
                   ),
                 ),
 
-                const SizedBox(height: 16),
-
-                // Botón notificaciones
-                SizedBox(
-                  width: double.infinity,
-                  height: 50,
-                  child: OutlinedButton.icon(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => NotificationSettingsScreen(
-                              habit: widget.habit),
-                        ),
-                      );
-                    },
-                    icon: Icon(
-                      widget.habit.notificacion?['activa'] == true
-                          ? Icons.notifications_active
-                          : Icons.notifications_none,
-                      color: widget.habit.notificacion?['activa'] == true
-                          ? const Color(0xFF22C55E)
-                          : Colors.white54,
-                    ),
-                    label: Text(
-                      widget.habit.notificacion?['activa'] == true
-                          ? 'Recordatorio activado'
-                          : 'Configurar recordatorio',
-                      style: TextStyle(
-                        color: widget.habit.notificacion?['activa'] == true
-                            ? const Color(0xFF22C55E)
-                            : Colors.white54,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    style: OutlinedButton.styleFrom(
-                      side: BorderSide(
-                        color: widget.habit.notificacion?['activa'] == true
-                            ? const Color(0xFF22C55E).withValues(alpha: 0.5)
-                            : t.cardBg,
-                      ),
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14)),
-                    ),
-                  ),
-                ),
 
                 const SizedBox(height: 12),
 
