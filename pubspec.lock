@@ -282,10 +282,17 @@ packages:
     dependency: transitive
     description:
       name: flutter_local_notifications_linux
+<<<<<<< Updated upstream
       sha256: "8f685642876742c941b29c32030f6f4f6dacd0e4eaecb3efbb187d6a3812ca01"
       url: "https://pub.dev"
     source: hosted
     version: "5.0.0"
+=======
+      sha256: "33f741ef47b5f63cc7f78fe75eeeac7e19f171ff3c3df054d84c1e38bedb6a03"
+      url: "https://pub.dev"
+    source: hosted
+    version: "4.0.0+1"
+>>>>>>> Stashed changes
   flutter_local_notifications_platform_interface:
     dependency: transitive
     description:
