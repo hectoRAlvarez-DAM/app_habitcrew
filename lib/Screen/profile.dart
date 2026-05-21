@@ -12,6 +12,8 @@ import 'package:app_habitcrew/Screen/profile_theme_service.dart';
 import 'package:app_habitcrew/Screen/edit_profile_screen.dart';
 import 'package:app_habitcrew/Screen/settings_screen.dart';
 import 'models/habit.dart';
+import '../servicios/friend_service.dart';
+import 'archievements_page.dart';
 
 class Profile extends StatefulWidget {
   const Profile({super.key});
@@ -42,6 +44,8 @@ class _ProfileState extends State<Profile> {
   List<Habit> _habitos = [];
   StreamSubscription<List<Habit>>? _habitSub;
   int _mejorRacha = 0;
+  int _numAmigos = 0;
+  int _totalHabitosCompletados = 0;
 
   @override
   void initState() {
@@ -70,6 +74,11 @@ class _ProfileState extends State<Profile> {
         _bio = data['bio'] as String? ?? '';
         _userName = data['nom'] as String? ?? _userName;
         _mejorRacha = actual > record ? actual : record;
+        _totalHabitosCompletados = (data['totalHabitosCompletados'] as num?)?.toInt() ?? 0;
+      });
+      // Cargar número de amigos
+      FriendService().obtenerAmigos().then((amigos) {
+        if (mounted) setState(() => _numAmigos = amigos.length);
       });
     });
   }
@@ -200,9 +209,7 @@ class _ProfileState extends State<Profile> {
                       gradient: LinearGradient(
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
-                        colors: isContrast
-                            ? [const Color(0xFFE8F5E9), const Color(0xFFC8E6C9)]
-                            : _getBannerColors(),
+                        colors: _getBannerColors(),
                       ),
                       borderRadius: const BorderRadius.only(
                         bottomLeft: Radius.circular(16),
@@ -220,30 +227,28 @@ class _ProfileState extends State<Profile> {
                             child: CustomPaint(painter: DiscordPatternPainter(isContrast: isContrast)),
                           ),
                         ),
-                        if (!isContrast) ...[
-                          if (_bannerEquipado == 'Beta')
-                            Center(
-                              child: Text(
-                                'BETA',
-                                style: TextStyle(
-                                  fontSize: 48,
-                                  fontWeight: FontWeight.w900,
-                                  color: Colors.white.withValues(alpha: 0.15),
-                                  letterSpacing: 16,
-                                ),
-                              ),
-                            )
-                          else if (_bannerEquipado != null)
-                            Center(
-                              child: Opacity(
-                                opacity: 0.3,
-                                child: Text(
-                                  ProfileThemeService.getBanner(_bannerEquipado)?.emoji ?? '',
-                                  style: const TextStyle(fontSize: 80),
-                                ),
+                        if (_bannerEquipado == 'Beta')
+                          Center(
+                            child: Text(
+                              'BETA',
+                              style: TextStyle(
+                                fontSize: 48,
+                                fontWeight: FontWeight.w900,
+                                color: Colors.white.withValues(alpha: 0.15),
+                                letterSpacing: 16,
                               ),
                             ),
-                          ],
+                          )
+                        else if (_bannerEquipado != null)
+                          Center(
+                            child: Opacity(
+                              opacity: 0.3,
+                              child: Text(
+                                ProfileThemeService.getBanner(_bannerEquipado)?.emoji ?? '',
+                                style: const TextStyle(fontSize: 80),
+                              ),
+                            ),
+                          ),
                         // Botón editar perfil
                       ],
                     ),
@@ -398,6 +403,7 @@ class _ProfileState extends State<Profile> {
                 ),
               ),
 
+
               const SizedBox(height: 20),
 
               // ── Insignias equipadas ──────────────────────────
@@ -443,7 +449,6 @@ class _ProfileState extends State<Profile> {
                             'Desbloquea logros y equipa hasta 3 insignias',
                             style: TextStyle(color: _textMuted(isContrast), fontSize: 13),
                           )
-                        // FIX OVERFLOW: Wrap en lugar de Row para que las insignias hagan wrap
                         : Wrap(
                             spacing: 8,
                             runSpacing: 8,
@@ -491,45 +496,103 @@ class _ProfileState extends State<Profile> {
               // Logros
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'LOGROS',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: _textSecondary(isContrast),
-                        letterSpacing: 1.2,
-                      ),
+                child: GestureDetector(
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const AchievementsPage()),
+                  ),
+                  child: Container(
+                    padding: const EdgeInsets.all(18),
+                    decoration: BoxDecoration(
+                      color: _cardBackground(isContrast),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: _cardBorder(isContrast)),
+                      boxShadow: isContrast
+                          ? [BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 8, offset: const Offset(0, 2))]
+                          : null,
                     ),
-                    const SizedBox(height: 16),
-                    LayoutBuilder(
-                      builder: (context, constraints) {
-                        int crossAxisCount = constraints.maxWidth > 600 ? 4 : 2;
-                        return GridView.count(
-                          shrinkWrap: true,
-                          physics: const NeverScrollableScrollPhysics(),
-                          crossAxisCount: crossAxisCount,
-                          mainAxisSpacing: 12,
-                          crossAxisSpacing: 12,
-                          childAspectRatio: 0.9,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            _buildAchievementGrid('Madrugador', '7 días seguidos', Icons.wb_sunny, Colors.orange, 100, isContrast),
-                            _buildAchievementGrid('En racha', '30 días de racha', Icons.local_fire_department, Colors.red, 80, isContrast),
-                            _buildAchievementGrid('Social', '5 amigos', Icons.people, const Color.fromARGB(255, 8, 56, 95), 60, isContrast),
-                            _buildAchievementGrid('Disciplina', '50 hábitos', Icons.auto_awesome, const Color.fromARGB(255, 49, 2, 58), 40, isContrast),
+                            Text(
+                              'LOGROS',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.bold,
+                                color: _textSecondary(isContrast),
+                                letterSpacing: 1.2,
+                              ),
+                            ),
+                            Row(
+                              children: [
+                                Text(
+                                  'Ver todos',
+                                  style: TextStyle(
+                                    color: const Color(0xFF22C55E),
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                const SizedBox(width: 4),
+                                const Icon(Icons.chevron_right_rounded,
+                                    color: Color(0xFF22C55E), size: 18),
+                              ],
+                            ),
                           ],
-                        );
-                      },
+                        ),
+                        const SizedBox(height: 16),
+                        RichText(
+                          text: TextSpan(
+                            children: [
+                              TextSpan(
+                                text: '${_logrosDesbloqueados.length}',
+                                style: TextStyle(
+                                  fontSize: 36,
+                                  fontWeight: FontWeight.bold,
+                                  color: const Color(0xFF22C55E),
+                                ),
+                              ),
+                              TextSpan(
+                                text: ' / 73',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w500,
+                                  color: _textSecondary(isContrast),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'logros desbloqueados',
+                          style: TextStyle(
+                            color: _textMuted(isContrast),
+                            fontSize: 12,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(4),
+                          child: LinearProgressIndicator(
+                            value: (_logrosDesbloqueados.length / 73).clamp(0.0, 1.0),
+                            minHeight: 6,
+                            backgroundColor: isContrast
+                                ? const Color(0xFFDDDDDD)
+                                : Colors.white.withValues(alpha: 0.12),
+                            valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF22C55E)),
+                          ),
+                        ),
+                      ],
                     ),
-                  ],
+                  ),
                 ),
               ),
 
-              const SizedBox(height: 30),
-
-              const SizedBox(height: 20),
+              const SizedBox(height: 100),
             ],
           ),
         ),
@@ -727,75 +790,7 @@ class _ProfileState extends State<Profile> {
     );
   }
 
-  Widget _buildAchievementGrid(
-      String title, String subtitle, IconData icon, Color color, int progress, bool isContrast) {
-    return Container(
-      decoration: BoxDecoration(
-        color: _achievementCardBg(isContrast),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: _achievementCardBorder(isContrast)),
-        boxShadow: isContrast
-            ? [BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 6, offset: const Offset(0, 2))]
-            : null,
-      ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            width: 60,
-            height: 60,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: color.withValues(alpha: 0.3),
-              boxShadow: [
-                BoxShadow(color: color.withValues(alpha: 0.4), blurRadius: 10, spreadRadius: 1),
-              ],
-            ),
-            child: Icon(icon, color: isContrast ? color : Colors.white, size: 30),
-          ),
-          const SizedBox(height: 8),
-          Text(title,
-              style: TextStyle(
-                color: _textPrimary(isContrast),
-                fontWeight: FontWeight.bold,
-                fontSize: 14,
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis),
-          Text(subtitle,
-              style: TextStyle(color: _textSecondary(isContrast), fontSize: 11),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis),
-          const SizedBox(height: 8),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            child: Stack(
-              children: [
-                Container(
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: isContrast ? const Color(0xFFDDDDDD) : Colors.white.withValues(alpha: 0.2),
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-                FractionallySizedBox(
-                  alignment: Alignment.centerLeft,
-                  widthFactor: progress / 100,
-                  child: Container(
-                    height: 4,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(2),
-                      color: color,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+
 
   Widget _buildActionButton(String text, IconData icon, Color color, bool isContrast, {VoidCallback? onTap}) {
     return Container(

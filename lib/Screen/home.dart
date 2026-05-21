@@ -510,28 +510,31 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
         children: [
           Expanded(
             child: _buildStatCard(t,
-              emoji: '✅',
+              emoji: '',
               value: '$_completadosHoy/${filtrados.length}',
               label: _labelCompletados,
               color: const Color(0xFF22C55E),
+              iconData: Icons.check_circle_rounded,
             ),
           ),
           const SizedBox(width: 12),
           Expanded(
             child: _buildStatCard(t,
-              emoji: '🔥',
+              emoji: '',
               value: '$_mejorRacha',
               label: 'Mejor racha',
               color: const Color(0xFFF97316),
+              iconData: Icons.local_fire_department_rounded,
             ),
           ),
           const SizedBox(width: 12),
           Expanded(
             child: _buildStatCard(t,
-              emoji: '📋',
+              emoji: '',
               value: '${filtrados.length}',
               label: 'Hábitos',
               color: const Color(0xFF3B82F6),
+              iconData: Icons.format_list_bulleted_rounded,
             ),
           ),
         ],
@@ -544,6 +547,7 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
     required String value,
     required String label,
     required Color color,
+    IconData? iconData,
   }) {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 10),
@@ -554,7 +558,9 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
       ),
       child: Column(
         children: [
-          Text(emoji, style: const TextStyle(fontSize: 22)),
+          iconData != null
+              ? Icon(iconData, color: color, size: 26)
+              : Text(emoji, style: const TextStyle(fontSize: 22)),
           const SizedBox(height: 6),
           Text(
             value,
