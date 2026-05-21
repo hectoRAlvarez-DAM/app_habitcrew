@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:app_habitcrew/Widgets/contrast_mode.dart';
+import 'package:app_habitcrew/Widgets/app_theme.dart';
 import 'package:flutter/services.dart';
 import 'package:app_habitcrew/Widgets/animated_background.dart';
 import 'package:app_habitcrew/Widgets/glassmorphism_card.dart';
@@ -17,6 +19,10 @@ class HabitDetailScreen extends StatefulWidget {
 }
 
 class _HabitDetailScreenState extends State<HabitDetailScreen> {
+
+  AppTheme get _t => AppTheme.fromContrast(ContrastMode.of(context));
+
+
   final HabitService _habitService = HabitService();
   final GroupService _groupService = GroupService();
 
@@ -118,12 +124,12 @@ class _HabitDetailScreenState extends State<HabitDetailScreen> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF1E1E2E),
-        title: const Text('Eliminar hábito',
-            style: TextStyle(color: Colors.white)),
+        backgroundColor: _t.isContrast ? Colors.white : const Color(0xFF1E1E2E),
+        title: Text('Eliminar hábito',
+            style: TextStyle(color: _t.isContrast ? const Color(0xFF111111) : Colors.white)),
         content: Text(
           '¿Eliminar "${widget.habit.nombre}"? Esta acción no se puede deshacer.',
-          style: const TextStyle(color: Colors.white70),
+          style: TextStyle(color: _t.isContrast ? const Color(0xFF555555) : Colors.white70),
         ),
         actions: [
           TextButton(
@@ -147,6 +153,8 @@ class _HabitDetailScreenState extends State<HabitDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isContrast = ContrastMode.of(context);
+    final t = AppTheme.fromContrast(isContrast);
     return Scaffold(
       backgroundColor: Colors.transparent,
       body: AnimatedBackground(
@@ -164,26 +172,26 @@ class _HabitDetailScreenState extends State<HabitDetailScreen> {
                       child: Container(
                         padding: const EdgeInsets.all(8),
                         decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.08),
+                          color: t.cardBg,
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(
-                              color: Colors.white.withValues(alpha: 0.1)),
+                              color: t.cardBg),
                         ),
-                        child: const Icon(Icons.arrow_back,
-                            color: Colors.white, size: 20),
+                        child: Icon(Icons.arrow_back,
+                            color: t.iconPrimary, size: 20),
                       ),
                     ),
                     const SizedBox(width: 16),
                     Text(widget.habit.emoji,
-                        style: const TextStyle(fontSize: 28)),
+                        style: TextStyle(fontSize: 28)),
                     const SizedBox(width: 10),
                     Expanded(
                       child: Text(
                         widget.habit.nombre,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 22,
                           fontWeight: FontWeight.bold,
-                          color: Colors.white,
+                          color: t.textPrimary,
                         ),
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -257,15 +265,15 @@ class _HabitDetailScreenState extends State<HabitDetailScreen> {
                                 Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    const Text(
+                                    Text(
                                       'Comparte este código con tus compañeros',
                                       style: TextStyle(
-                                          color: Colors.white54, fontSize: 12),
+                                          color: t.textMuted, fontSize: 12),
                                     ),
                                     const SizedBox(height: 8),
                                     Text(
                                       _codigoGrupo!,
-                                      style: const TextStyle(
+                                      style: TextStyle(
                                         color: Color(0xFF22C55E),
                                         fontSize: 28,
                                         fontWeight: FontWeight.bold,
@@ -297,7 +305,7 @@ class _HabitDetailScreenState extends State<HabitDetailScreen> {
                                           color: const Color(0xFF22C55E)
                                               .withValues(alpha: 0.3)),
                                     ),
-                                    child: const Icon(Icons.copy,
+                                    child: Icon(Icons.copy,
                                         color: Color(0xFF22C55E), size: 20),
                                   ),
                                 ),
@@ -341,10 +349,10 @@ class _HabitDetailScreenState extends State<HabitDetailScreen> {
                               child: CircularProgressIndicator(
                                   color: Color(0xFF3B82F6)))
                           : _estadisticasGrupo.isEmpty
-                              ? const Text(
+                              ? Text(
                                   'No hay datos del grupo todavía',
                                   style: TextStyle(
-                                      color: Colors.white54, fontSize: 13),
+                                      color: t.textMuted, fontSize: 13),
                                 )
                               : _buildGrupalChart(),
                     ),
@@ -364,9 +372,9 @@ class _HabitDetailScreenState extends State<HabitDetailScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         // Emoji picker
-                        const Text('Emoji',
+                        Text('Emoji',
                             style: TextStyle(
-                                color: Colors.white70,
+                                color: t.textSecondary,
                                 fontSize: 13,
                                 fontWeight: FontWeight.w600)),
                         const SizedBox(height: 8),
@@ -385,18 +393,18 @@ class _HabitDetailScreenState extends State<HabitDetailScreen> {
                                   color: sel
                                       ? const Color(0xFF22C55E)
                                           .withValues(alpha: 0.2)
-                                      : Colors.white.withValues(alpha: 0.05),
+                                      : t.cardBg,
                                   borderRadius: BorderRadius.circular(8),
                                   border: Border.all(
                                     color: sel
                                         ? const Color(0xFF22C55E)
-                                        : Colors.white.withValues(alpha: 0.1),
+                                        : t.cardBorder,
                                   ),
                                 ),
                                 child: Center(
                                     child: Text(e,
                                         style:
-                                            const TextStyle(fontSize: 18))),
+                                            TextStyle(fontSize: 18))),
                               ),
                             );
                           }).toList(),
@@ -405,9 +413,9 @@ class _HabitDetailScreenState extends State<HabitDetailScreen> {
                         const SizedBox(height: 16),
 
                         // Nombre
-                        const Text('Nombre',
+                        Text('Nombre',
                             style: TextStyle(
-                                color: Colors.white70,
+                                color: t.textSecondary,
                                 fontSize: 13,
                                 fontWeight: FontWeight.w600)),
                         const SizedBox(height: 6),
@@ -417,9 +425,9 @@ class _HabitDetailScreenState extends State<HabitDetailScreen> {
                         const SizedBox(height: 16),
 
                         // Descripción
-                        const Text('Descripción',
+                        Text('Descripción',
                             style: TextStyle(
-                                color: Colors.white70,
+                                color: t.textSecondary,
                                 fontSize: 13,
                                 fontWeight: FontWeight.w600)),
                         const SizedBox(height: 6),
@@ -429,9 +437,9 @@ class _HabitDetailScreenState extends State<HabitDetailScreen> {
                         const SizedBox(height: 16),
 
                         // Frecuencia
-                        const Text('Frecuencia',
+                        Text('Frecuencia',
                             style: TextStyle(
-                                color: Colors.white70,
+                                color: t.textSecondary,
                                 fontSize: 13,
                                 fontWeight: FontWeight.w600)),
                         const SizedBox(height: 8),
@@ -449,20 +457,19 @@ class _HabitDetailScreenState extends State<HabitDetailScreen> {
                                   decoration: BoxDecoration(
                                     color: sel
                                         ? const Color(0xFF22C55E)
-                                        : Colors.white.withValues(alpha: 0.05),
+                                        : t.chipBg,
                                     borderRadius: BorderRadius.circular(20),
                                     border: Border.all(
                                       color: sel
                                           ? const Color(0xFF22C55E)
-                                          : Colors.white
-                                              .withValues(alpha: 0.1),
+                                          : t.chipBorder,
                                     ),
                                   ),
                                   child: Text(f,
                                       style: TextStyle(
                                           color: sel
                                               ? Colors.white
-                                              : Colors.white54,
+                                              : t.textSecondary,
                                           fontSize: 13,
                                           fontWeight: FontWeight.w500)),
                                 ),
@@ -515,7 +522,7 @@ class _HabitDetailScreenState extends State<HabitDetailScreen> {
                       side: BorderSide(
                         color: widget.habit.notificacion?['activa'] == true
                             ? const Color(0xFF22C55E).withValues(alpha: 0.5)
-                            : Colors.white.withValues(alpha: 0.15),
+                            : t.cardBg,
                       ),
                       shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(14)),
@@ -533,7 +540,7 @@ class _HabitDetailScreenState extends State<HabitDetailScreen> {
                     onPressed: _guardando ? null : _guardarCambios,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF22C55E),
-                      foregroundColor: Colors.white,
+                      foregroundColor: t.textPrimary,
                       shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(14)),
                       elevation: 0,
@@ -544,7 +551,7 @@ class _HabitDetailScreenState extends State<HabitDetailScreen> {
                             height: 20,
                             child: CircularProgressIndicator(
                                 color: Colors.white, strokeWidth: 2))
-                        : const Text('Guardar cambios',
+                        : Text('Guardar cambios',
                             style: TextStyle(
                                 fontSize: 15, fontWeight: FontWeight.bold)),
                   ),
@@ -564,7 +571,7 @@ class _HabitDetailScreenState extends State<HabitDetailScreen> {
                       shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(14)),
                     ),
-                    child: const Text('Eliminar hábito',
+                    child: Text('Eliminar hábito',
                         style: TextStyle(
                             fontSize: 15, fontWeight: FontWeight.bold)),
                   ),
@@ -582,21 +589,23 @@ class _HabitDetailScreenState extends State<HabitDetailScreen> {
   // ─── Helpers ────────────────────────────────────────────────────
 
   Widget _buildSectionTitle(String title) {
+    final t = _t;
     return Text(
       title,
-      style: const TextStyle(
-          fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
+      style: TextStyle(
+          fontSize: 16, fontWeight: FontWeight.bold, color: t.textPrimary),
     );
   }
 
   Widget _buildStat(String label, String value) {
+    final t = _t;
     return Column(
       children: [
         Text(value,
-            style: const TextStyle(
+            style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
-                color: Colors.white)),
+                color: t.textPrimary)),
         const SizedBox(height: 2),
         Text(label, style: TextStyle(fontSize: 11, color: Colors.grey[400])),
       ],
@@ -605,19 +614,20 @@ class _HabitDetailScreenState extends State<HabitDetailScreen> {
 
   Widget _buildTextField(TextEditingController controller, String hint,
       {int maxLines = 1}) {
+    final t = _t;
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.05),
+        color: t.cardBg,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+        border: Border.all(color: t.cardBorder),
       ),
       child: TextField(
         controller: controller,
         maxLines: maxLines,
-        style: const TextStyle(color: Colors.white),
+        style: TextStyle(color: t.textPrimary),
         decoration: InputDecoration(
           hintText: hint,
-          hintStyle: const TextStyle(color: Colors.white30),
+          hintStyle: TextStyle(color: t.textMuted),
           border: InputBorder.none,
           contentPadding:
               const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
@@ -641,6 +651,7 @@ class _HabitDetailScreenState extends State<HabitDetailScreen> {
     required List<String> nombres,
     required List<Color> colores,
   }) {
+    final t = _t;
     const barMaxHeight = 80.0;
     const barWidth = 28.0;
     final groupCount = labels.length;
@@ -675,7 +686,7 @@ class _HabitDetailScreenState extends State<HabitDetailScreen> {
                           decoration: BoxDecoration(
                             color: completado
                                 ? colores[memberIndex]
-                                : Colors.white.withValues(alpha: 0.08),
+                                : t.cardBg,
                             borderRadius: BorderRadius.circular(6),
                           ),
                         ),
@@ -710,8 +721,8 @@ class _HabitDetailScreenState extends State<HabitDetailScreen> {
                   ),
                   const SizedBox(width: 4),
                   Text(nombres[i],
-                      style: const TextStyle(
-                          color: Colors.white70, fontSize: 12)),
+                      style: TextStyle(
+                          color: t.textSecondary, fontSize: 12)),
                 ],
               );
             }),

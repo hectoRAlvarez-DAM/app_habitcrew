@@ -6,6 +6,8 @@ import 'package:app_habitcrew/servicios/achievement_service.dart';
 import 'package:app_habitcrew/servicios/coin_service.dart';
 import 'package:flutter/material.dart';
 import '../widgets/animated_background.dart';
+import 'package:app_habitcrew/Widgets/contrast_mode.dart';
+import 'package:app_habitcrew/Widgets/app_theme.dart';
 
 class AchievementsPage extends StatefulWidget {
   const AchievementsPage({super.key});
@@ -23,6 +25,8 @@ class _AchievementsPageState extends State<AchievementsPage> {
 
   // IDs de logros cuyas monedas ya han sido reclamadas (cargado desde Firestore)
   Set<String> _claimedIds = {};
+
+  AppTheme get _t => AppTheme.fromContrast(ContrastMode.of(context));
 
   @override
   void initState() {
@@ -97,10 +101,19 @@ class _AchievementsPageState extends State<AchievementsPage> {
     CoinService.instance.coinsNotifier.value += achievement.coinReward;
     setState(() => _claimedIds.add(achievement.id));
     if (!mounted) return;
-    AchievementUnlockOverlay.show(
-      context,
-      achievement,
-      label: '¡Recompensa reclamada!',
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.monetization_on, color: Color(0xFFFFD700)),
+            const SizedBox(width: 8),
+            Text('+${achievement.coinReward} monedas reclamadas'),
+          ],
+        ),
+        backgroundColor: const Color(0xFF22C55E),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      ),
     );
   }
 
@@ -120,40 +133,38 @@ class _AchievementsPageState extends State<AchievementsPage> {
     CoinService.instance.coinsNotifier.value += earned;
     setState(() => _claimedIds.addAll(ids));
     if (!mounted) return;
-
-    final summary = Achievement(
-      id: '_summary',
-      title: '${unclaimed.length} logros reclamados',
-      description: 'Has recogido todas tus recompensas pendientes',
-      icon: Icons.redeem,
-      isUnlocked: true,
-      currentValue: earned,
-      targetValue: earned,
-      categoryId: '0',
-      coinReward: earned,
-      conditionType: '',
-    );
-    AchievementUnlockOverlay.show(
-      context,
-      summary,
-      label: '¡Recompensas reclamadas!',
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.monetization_on, color: Color(0xFFFFD700)),
+            const SizedBox(width: 8),
+            Text('+$earned monedas reclamadas (${unclaimed.length} logros)'),
+          ],
+        ),
+        backgroundColor: const Color(0xFF22C55E),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    final isContrast = ContrastMode.of(context);
+    final t = AppTheme.fromContrast(isContrast);
     return AnimatedBackground(
       child: Scaffold(
         backgroundColor: Colors.transparent,
         appBar: AppBar(
-          title: const Text(
+          title: Text(
             'Mis Logros',
-            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+            style: TextStyle(color: t.textPrimary, fontWeight: FontWeight.bold),
           ),
           centerTitle: true,
           backgroundColor: Colors.transparent,
           elevation: 0,
-          foregroundColor: Colors.white,
+          foregroundColor: t.textPrimary,
           actions: [
             Padding(
               padding: const EdgeInsets.only(right: 16),
@@ -164,8 +175,8 @@ class _AchievementsPageState extends State<AchievementsPage> {
                   const SizedBox(width: 4),
                   Text(
                     '${CoinService.instance.coins}',
-                    style: const TextStyle(
-                      color: Colors.white,
+                    style: TextStyle(
+                      color: t.textPrimary,
                       fontWeight: FontWeight.bold,
                       fontSize: 16,
                     ),
@@ -198,6 +209,7 @@ class _AchievementsPageState extends State<AchievementsPage> {
 
   // ─── SECCIÓN DE ESTADÍSTICAS ─────────────────────────────────────
   Widget _buildStatsSection() {
+    final t = _t;
     final best = _bestCategory;
     final pct = _totalAchievements > 0
         ? ((_unlockedAchievements / _totalAchievements) * 100).round()
@@ -206,14 +218,14 @@ class _AchievementsPageState extends State<AchievementsPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Padding(
-          padding: EdgeInsets.only(left: 4, bottom: 12),
+        Padding(
+          padding: const EdgeInsets.only(left: 4, bottom: 12),
           child: Text(
             'Estadísticas',
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
-              color: Colors.white,
+              color: t.textPrimary,
             ),
           ),
         ),
@@ -290,12 +302,14 @@ class _AchievementsPageState extends State<AchievementsPage> {
     required String value,
     required String label,
   }) {
+    final t = _t;
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.07),
+        color: t.cardBg,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.white.withOpacity(0.08)),
+        border: Border.all(color: t.cardBorder),
+        boxShadow: t.cardShadow,
       ),
       child: Column(
         children: [
@@ -303,10 +317,10 @@ class _AchievementsPageState extends State<AchievementsPage> {
           const SizedBox(height: 6),
           Text(
             value,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.bold,
-              color: Colors.white,
+              color: t.textPrimary,
             ),
             textAlign: TextAlign.center,
             maxLines: 1,
@@ -315,7 +329,7 @@ class _AchievementsPageState extends State<AchievementsPage> {
           const SizedBox(height: 2),
           Text(
             label,
-            style: const TextStyle(fontSize: 10, color: Colors.white54),
+            style: TextStyle(fontSize: 10, color: t.textMuted),
             textAlign: TextAlign.center,
           ),
         ],
@@ -325,24 +339,25 @@ class _AchievementsPageState extends State<AchievementsPage> {
 
   // ─── RESUMEN SUPERIOR ────────────────────────────────────────────
   Widget _buildSummaryCard() {
+    final t = _t;
     final total = _totalAchievements;
     final unlocked = _unlockedAchievements;
     final percent = total > 0 ? ((unlocked / total) * 100).round() : 0;
 
     return Card(
       elevation: 3,
-      color: Colors.white.withOpacity(0.08),
+      color: t.cardBg,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: Padding(
         padding: const EdgeInsets.all(20),
         child: Column(
           children: [
-            const Text(
+            Text(
               'Progreso Total',
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
-                color: Colors.white,
+                color: t.textPrimary,
               ),
             ),
             const SizedBox(height: 16),
@@ -360,7 +375,7 @@ class _AchievementsPageState extends State<AchievementsPage> {
               child: LinearProgressIndicator(
                 value: total > 0 ? unlocked / total : 0,
                 minHeight: 10,
-                backgroundColor: Colors.white12,
+                backgroundColor: t.progressBg,
                 valueColor: const AlwaysStoppedAnimation<Color>(
                   Color(0xFF22C55E),
                 ),
@@ -379,10 +394,10 @@ class _AchievementsPageState extends State<AchievementsPage> {
                     style: const TextStyle(fontWeight: FontWeight.bold),
                   ),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF22C55E).withOpacity(0.25),
+                    backgroundColor: const Color(0xFF22C55E).withValues(alpha: 0.25),
                     foregroundColor: Colors.white,
                     side: BorderSide(
-                        color: const Color(0xFF22C55E).withOpacity(0.6)),
+                        color: const Color(0xFF22C55E).withValues(alpha: 0.6)),
                     padding: const EdgeInsets.symmetric(vertical: 12),
                     shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12)),
@@ -397,27 +412,27 @@ class _AchievementsPageState extends State<AchievementsPage> {
   }
 
   Widget _buildStat(String label, String value, Color color) {
+    final t = _t;
     return Column(
       children: [
         Text(
           value,
-          style: TextStyle(
-              fontSize: 26, fontWeight: FontWeight.bold, color: color),
+          style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: color),
         ),
         const SizedBox(height: 4),
-        Text(label,
-            style: const TextStyle(fontSize: 12, color: Colors.white60)),
+        Text(label, style: TextStyle(fontSize: 12, color: t.textMuted)),
       ],
     );
   }
 
   // ─── TARJETA DE CATEGORÍA ────────────────────────────────────────
   Widget _buildCategoryCard(AchievementCategory category) {
+    final t = _t;
     final isExpanded = _expandedCategoryId == category.id;
 
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
-      color: Colors.white.withOpacity(0.08),
+      color: t.cardBg,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: Column(
         children: [
@@ -432,7 +447,7 @@ class _AchievementsPageState extends State<AchievementsPage> {
                 children: [
                   CircleAvatar(
                     backgroundColor:
-                        const Color(0xFF22C55E).withOpacity(0.15),
+                        const Color(0xFF22C55E).withValues(alpha: 0.15),
                     child:
                         Icon(category.icon, color: const Color(0xFF22C55E)),
                   ),
@@ -443,22 +458,21 @@ class _AchievementsPageState extends State<AchievementsPage> {
                       children: [
                         Text(
                           category.name,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
-                            color: Colors.white,
+                            color: t.textPrimary,
                           ),
                         ),
                         const SizedBox(height: 4),
                         Text(
                           '${category.unlockedAchievements}/${category.totalAchievements} desbloqueados',
-                          style: const TextStyle(
-                              fontSize: 12, color: Colors.white60),
+                          style: TextStyle(fontSize: 12, color: t.textMuted),
                         ),
                         const SizedBox(height: 8),
                         LinearProgressIndicator(
                           value: category.completionPercentage,
-                          backgroundColor: Colors.white12,
+                          backgroundColor: t.progressBg,
                           valueColor: const AlwaysStoppedAnimation<Color>(
                             Color(0xFF22C55E),
                           ),
@@ -469,14 +483,14 @@ class _AchievementsPageState extends State<AchievementsPage> {
                   const SizedBox(width: 8),
                   Icon(
                     isExpanded ? Icons.expand_less : Icons.expand_more,
-                    color: Colors.white60,
+                    color: t.textMuted,
                   ),
                 ],
               ),
             ),
           ),
           if (isExpanded) ...[
-            Divider(height: 1, color: Colors.white12),
+            Divider(height: 1, color: t.divider),
             ...category.achievements.map(_buildAchievementTile),
           ],
         ],
@@ -486,7 +500,8 @@ class _AchievementsPageState extends State<AchievementsPage> {
 
   // ─── LOGRO INDIVIDUAL ────────────────────────────────────────────
   Widget _buildAchievementTile(Achievement achievement) {
-    final color = achievement.isUnlocked ? Colors.amber : Colors.white38;
+    final t = _t;
+    final color = achievement.isUnlocked ? Colors.amber : t.textHint;
     final isClaimed = _claimedIds.contains(achievement.id);
 
     return InkWell(
@@ -500,7 +515,7 @@ class _AchievementsPageState extends State<AchievementsPage> {
           children: [
             // Ícono
             CircleAvatar(
-              backgroundColor: color.withOpacity(0.15),
+              backgroundColor: color.withValues(alpha: 0.15),
               child: Icon(achievement.icon, color: color, size: 20),
             ),
             const SizedBox(width: 12),
@@ -517,9 +532,7 @@ class _AchievementsPageState extends State<AchievementsPage> {
                           achievement.title,
                           style: TextStyle(
                             fontWeight: FontWeight.w600,
-                            color: achievement.isUnlocked
-                                ? Colors.white
-                                : Colors.white38,
+                            color: achievement.isUnlocked ? t.textPrimary : t.textMuted,
                           ),
                         ),
                       ),
@@ -527,10 +540,10 @@ class _AchievementsPageState extends State<AchievementsPage> {
                         padding: const EdgeInsets.symmetric(
                             horizontal: 8, vertical: 2),
                         decoration: BoxDecoration(
-                          color: const Color(0xFFFFD700).withOpacity(0.12),
+                          color: const Color(0xFFFFD700).withValues(alpha: 0.12),
                           borderRadius: BorderRadius.circular(20),
                           border: Border.all(
-                            color: const Color(0xFFFFD700).withOpacity(0.3),
+                            color: const Color(0xFFFFD700).withValues(alpha: 0.3),
                           ),
                         ),
                         child: Row(
@@ -556,21 +569,19 @@ class _AchievementsPageState extends State<AchievementsPage> {
                   // Descripción
                   Text(
                     achievement.description,
-                    style:
-                        const TextStyle(fontSize: 12, color: Colors.white54),
+                    style: TextStyle(fontSize: 12, color: t.textMuted),
                   ),
                   const SizedBox(height: 8),
                   // Estado / progreso / reclamar
                   if (!achievement.isUnlocked) ...[
                     Text(
                       '${achievement.currentValue} / ${achievement.targetValue}',
-                      style: const TextStyle(
-                          fontSize: 11, color: Colors.white38),
+                      style: TextStyle(fontSize: 11, color: t.textMuted),
                     ),
                     const SizedBox(height: 4),
                     LinearProgressIndicator(
                       value: achievement.progress,
-                      backgroundColor: Colors.white12,
+                      backgroundColor: t.progressBg,
                       valueColor: const AlwaysStoppedAnimation<Color>(
                           Color(0xFF22C55E)),
                     ),
@@ -584,9 +595,9 @@ class _AchievementsPageState extends State<AchievementsPage> {
                       ),
                     ),
                     const SizedBox(height: 2),
-                    const Text(
+                    Text(
                       '🪙 Monedas ya reclamadas · Toca para celebrar 🎉',
-                      style: TextStyle(fontSize: 10, color: Colors.white24),
+                      style: TextStyle(fontSize: 10, color: t.textHint),
                     ),
                   ] else ...[
                     Text(

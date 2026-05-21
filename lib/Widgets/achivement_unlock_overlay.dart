@@ -7,11 +7,7 @@ import '../widgets/animated_background.dart';
 class AchievementUnlockOverlay {
   static OverlayEntry? _overlayEntry;
 
-  static void show(
-    BuildContext context,
-    Achievement achievement, {
-    String label = '¡Logro desbloqueado!',
-  }) {
+  static void show(BuildContext context, Achievement achievement) {
     _overlayEntry?.remove();
 
     late ConfettiController confettiLeft;
@@ -25,7 +21,6 @@ class AchievementUnlockOverlay {
     _overlayEntry = OverlayEntry(
       builder: (context) => _AchievementOverlayContent(
         achievement: achievement,
-        label: label,
         confettiLeft: confettiLeft,
         confettiRight: confettiRight,
         onClose: () {
@@ -48,14 +43,12 @@ class AchievementUnlockOverlay {
 
 class _AchievementOverlayContent extends StatefulWidget {
   final Achievement achievement;
-  final String label;
   final ConfettiController confettiLeft;
   final ConfettiController confettiRight;
   final VoidCallback onClose;
 
   const _AchievementOverlayContent({
     required this.achievement,
-    required this.label,
     required this.confettiLeft,
     required this.confettiRight,
     required this.onClose,
@@ -256,14 +249,14 @@ class _AchievementOverlayContentState
                               color: const Color(0xFF22C55E).withOpacity(0.3),
                             ),
                           ),
-                          child: Row(
+                          child: const Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              const Icon(Icons.lock_open,
+                              Icon(Icons.lock_open,
                                   color: Color(0xFF22C55E), size: 14),
-                              const SizedBox(width: 6),
+                              SizedBox(width: 6),
                               Text(
-                                widget.label,
+                                '¡Logro desbloqueado!',
                                 style: TextStyle(
                                   color: Color(0xFF22C55E),
                                   fontWeight: FontWeight.bold,

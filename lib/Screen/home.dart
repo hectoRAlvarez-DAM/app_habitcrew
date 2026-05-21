@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:app_habitcrew/Widgets/animated_background.dart';
-import 'package:app_habitcrew/Widgets/glassmorphism_card.dart';
+import 'package:app_habitcrew/Widgets/contrast_mode.dart';
+import 'package:app_habitcrew/Widgets/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -192,11 +193,11 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
       subtitulo = reward.itemName ?? '';
       emoji = reward.itemEmoji ?? '🖼️';
       color = const Color(0xFF3B82F6);
-    } else {
-      titulo = '¡Avatar exclusivo!';
-      subtitulo = reward.itemName ?? '';
-      emoji = reward.itemEmoji ?? '🎭';
-      color = const Color(0xFFA855F7);
+} else {
+      titulo = '¡Recompensa!';
+      subtitulo = '';
+      emoji = '🎁';
+      color = const Color(0xFF22C55E);
     }
 
     showDialog(
@@ -352,28 +353,30 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
 
   @override
   Widget build(BuildContext context) {
+    final isContrast = ContrastMode.of(context);
+    final t = AppTheme.fromContrast(isContrast);
     return AnimatedBackground(
       child: SafeArea(
         child: CustomScrollView(
           physics: const BouncingScrollPhysics(),
           slivers: [
             // ── Header ──────────────────────────────────────────
-            SliverToBoxAdapter(child: _buildHeader()),
+            SliverToBoxAdapter(child: _buildHeader(t)),
 
             // ── Stats ───────────────────────────────────────────
-            SliverToBoxAdapter(child: _buildStats()),
+            SliverToBoxAdapter(child: _buildStats(t)),
 
             // ── Barra de progreso del día ────────────────────────
-            SliverToBoxAdapter(child: _buildDayProgress()),
+            SliverToBoxAdapter(child: _buildDayProgress(t)),
 
             // ── Chips de filtro ──────────────────────────────────
-            SliverToBoxAdapter(child: _buildFilterChips()),
+            SliverToBoxAdapter(child: _buildFilterChips(t)),
 
             // ── Lista de hábitos ─────────────────────────────────
-            SliverToBoxAdapter(child: _buildHabitList()),
+            SliverToBoxAdapter(child: _buildHabitList(t)),
 
             // ── Misiones diarias ─────────────────────────────────
-            SliverToBoxAdapter(child: _buildMisionesSection()),
+            SliverToBoxAdapter(child: _buildMisionesSection(t)),
 
             const SliverToBoxAdapter(child: SizedBox(height: 100)),
           ],
@@ -384,7 +387,7 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
 
   // ─── Header ─────────────────────────────────────────────────────
 
-  Widget _buildHeader() {
+  Widget _buildHeader(AppTheme t) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
       child: Row(
@@ -399,7 +402,7 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
                 AnimatedSwitcher(
                   duration: const Duration(milliseconds: 400),
                   child: _isLoadingName
-                      ? _buildShimmerText()
+                      ? _buildShimmerText(t)
                       : Column(
                           key: ValueKey(_userName),
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -408,17 +411,17 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
                               _saludoSegunHora(),
                               style: TextStyle(
                                 fontSize: 14,
-                                color: Colors.white.withValues(alpha: 0.5),
+                                color: t.textMuted,
                                 letterSpacing: 0.5,
                               ),
                             ),
                             const SizedBox(height: 2),
                             Text(
                               _userName,
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 30,
                                 fontWeight: FontWeight.bold,
-                                color: Colors.white,
+                                color: t.textPrimary,
                                 height: 1.1,
                               ),
                             ),
@@ -452,13 +455,11 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
               width: 44,
               height: 44,
               decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.08),
+                color: t.btnSecondaryBg,
                 borderRadius: BorderRadius.circular(14),
-                border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.12)),
+                border: Border.all(color: t.btnSecondaryBorder),
               ),
-              child: const Icon(Icons.menu,
-                  color: Colors.white70, size: 20),
+              child: Icon(Icons.menu, color: t.iconMuted, size: 20),
             ),
           ),
         ],
@@ -466,7 +467,7 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
     );
   }
 
-  Widget _buildShimmerText() {
+  Widget _buildShimmerText(AppTheme t) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -474,7 +475,7 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
           width: 80,
           height: 14,
           decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.1),
+            color: t.chipBg,
             borderRadius: BorderRadius.circular(4),
           ),
         ),
@@ -483,7 +484,7 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
           width: 160,
           height: 28,
           decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.1),
+            color: t.chipBg,
             borderRadius: BorderRadius.circular(6),
           ),
         ),
@@ -493,14 +494,14 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
 
   // ─── Stats ──────────────────────────────────────────────────────
 
-  Widget _buildStats() {
+  Widget _buildStats(AppTheme t) {
     final filtrados = _habitosFiltrados;
     return Padding(
       padding: const EdgeInsets.fromLTRB(24, 20, 24, 0),
       child: Row(
         children: [
           Expanded(
-            child: _buildStatCard(
+            child: _buildStatCard(t,
               emoji: '✅',
               value: '$_completadosHoy/${filtrados.length}',
               label: _labelCompletados,
@@ -509,7 +510,7 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
           ),
           const SizedBox(width: 12),
           Expanded(
-            child: _buildStatCard(
+            child: _buildStatCard(t,
               emoji: '🔥',
               value: '$_mejorRacha',
               label: 'Mejor racha',
@@ -518,7 +519,7 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
           ),
           const SizedBox(width: 12),
           Expanded(
-            child: _buildStatCard(
+            child: _buildStatCard(t,
               emoji: '📋',
               value: '${filtrados.length}',
               label: 'Hábitos',
@@ -530,7 +531,7 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
     );
   }
 
-  Widget _buildStatCard({
+  Widget _buildStatCard(AppTheme t, {
     required String emoji,
     required String value,
     required String label,
@@ -560,7 +561,7 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
             label,
             style: TextStyle(
               fontSize: 10,
-              color: Colors.white.withValues(alpha: 0.5),
+              color: t.textMuted,
             ),
             textAlign: TextAlign.center,
             maxLines: 1,
@@ -573,7 +574,7 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
 
   // ─── Barra de progreso del día ───────────────────────────────────
 
-  Widget _buildDayProgress() {
+  Widget _buildDayProgress(AppTheme t) {
     final filtrados = _habitosFiltrados;
     if (filtrados.isEmpty) return const SizedBox(height: 20);
     final progreso = _completadosHoy / filtrados.length;
@@ -591,7 +592,7 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
                 'Progreso del día',
                 style: TextStyle(
                   fontSize: 13,
-                  color: Colors.white.withValues(alpha: 0.6),
+                  color: t.textSecondary,
                   fontWeight: FontWeight.w500,
                 ),
               ),
@@ -615,7 +616,7 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
               builder: (_, value, __) => LinearProgressIndicator(
                 value: value,
                 minHeight: 8,
-                backgroundColor: Colors.white.withValues(alpha: 0.08),
+                backgroundColor: t.progressBg,
                 valueColor: AlwaysStoppedAnimation<Color>(
                   progreso == 1.0
                       ? const Color(0xFF22C55E)
@@ -648,7 +649,7 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
 
   // ─── Chips de filtro ─────────────────────────────────────────────
 
-  Widget _buildFilterChips() {
+  Widget _buildFilterChips(AppTheme t) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(24, 20, 0, 0),
       child: SingleChildScrollView(
@@ -656,11 +657,11 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
         physics: const BouncingScrollPhysics(),
         child: Row(
           children: [
-            _buildChip(HabitFilter.diario, 'Diarios', '📅'),
+            _buildChip(t, HabitFilter.diario, 'Diarios', '📅'),
             const SizedBox(width: 8),
-            _buildChip(HabitFilter.semanal, 'Semanales', '🗓️'),
+            _buildChip(t, HabitFilter.semanal, 'Semanales', '🗓️'),
             const SizedBox(width: 8),
-            _buildChip(HabitFilter.mensual, 'Mensuales', '📆'),
+            _buildChip(t, HabitFilter.mensual, 'Mensuales', '📆'),
             const SizedBox(width: 24),
           ],
         ),
@@ -668,7 +669,7 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
     );
   }
 
-  Widget _buildChip(HabitFilter filtro, String label, String emoji) {
+  Widget _buildChip(AppTheme t, HabitFilter filtro, String label, String emoji) {
     final isActive = _filtroActivo == filtro;
     return GestureDetector(
       onTap: () => setState(() => _filtroActivo = filtro),
@@ -678,14 +679,10 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
         padding:
             const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
         decoration: BoxDecoration(
-          color: isActive
-              ? const Color(0xFF22C55E)
-              : Colors.white.withValues(alpha: 0.06),
+          color: isActive ? t.tabActiveBg : t.tabInactiveBg,
           borderRadius: BorderRadius.circular(24),
           border: Border.all(
-            color: isActive
-                ? const Color(0xFF22C55E)
-                : Colors.white.withValues(alpha: 0.1),
+            color: isActive ? t.accent : t.chipBorder,
           ),
           boxShadow: isActive
               ? [
@@ -708,9 +705,7 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
                 fontSize: 13,
                 fontWeight:
                     isActive ? FontWeight.bold : FontWeight.w500,
-                color: isActive
-                    ? Colors.white
-                    : Colors.white.withValues(alpha: 0.6),
+                color: isActive ? t.tabActiveText : t.tabInactiveText,
               ),
             ),
           ],
@@ -721,7 +716,7 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
 
   // ─── Lista de hábitos ────────────────────────────────────────────
 
-  Widget _buildHabitList() {
+  Widget _buildHabitList(AppTheme t) {
     final habitos = _habitosFiltrados;
 
     return Padding(
@@ -731,7 +726,7 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
         switchInCurve: Curves.easeOut,
         switchOutCurve: Curves.easeIn,
         child: habitos.isEmpty
-            ? _buildEmptyState()
+            ? _buildEmptyState(t)
             : Column(
                 key: ValueKey(_filtroActivo),
                 children: habitos.asMap().entries.map((entry) {
@@ -750,7 +745,7 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
                     ),
                     child: Padding(
                       padding: const EdgeInsets.only(bottom: 10),
-                      child: _buildHabitItem(entry.value),
+                      child: _buildHabitItem(t, entry.value),
                     ),
                   );
                 }).toList(),
@@ -759,7 +754,7 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
     );
   }
 
-  Widget _buildEmptyState() {
+  Widget _buildEmptyState(AppTheme t) {
     String mensaje;
     if (_filtroActivo == HabitFilter.semanal) {
       mensaje = 'No tienes hábitos semanales';
@@ -773,9 +768,9 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
       width: double.infinity,
       padding: const EdgeInsets.all(28),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.04),
+        color: t.cardBg,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+        border: Border.all(color: t.cardBorder),
       ),
       child: Column(
         children: [
@@ -783,20 +778,19 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
           const SizedBox(height: 10),
           Text(
             mensaje,
-            style: const TextStyle(color: Colors.white70, fontSize: 14),
+            style: TextStyle(color: t.textSecondary, fontSize: 14),
           ),
           const SizedBox(height: 4),
           Text(
             'Crea uno desde la pestaña +',
-            style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.3), fontSize: 12),
+            style: TextStyle(color: t.textMuted, fontSize: 12),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildHabitItem(Habit habit) {
+  Widget _buildHabitItem(AppTheme t, Habit habit) {
     final completed = habit.completadoHoy;
     final animando = _habitosAnimando.contains(habit.id);
 
@@ -806,14 +800,10 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
         duration: const Duration(milliseconds: 300),
         curve: Curves.easeOutCubic,
         decoration: BoxDecoration(
-          color: completed
-              ? const Color(0xFF22C55E).withValues(alpha: 0.08)
-              : Colors.white.withValues(alpha: 0.05),
+          color: completed ? const Color(0xFF22C55E).withValues(alpha: 0.08) : t.cardBg,
           borderRadius: BorderRadius.circular(18),
           border: Border.all(
-            color: completed
-                ? const Color(0xFF22C55E).withValues(alpha: 0.3)
-                : Colors.white.withValues(alpha: 0.1),
+            color: completed ? const Color(0xFF22C55E).withValues(alpha: 0.3) : t.cardBorder,
             width: completed ? 1.5 : 1,
           ),
           boxShadow: completed
@@ -845,9 +835,7 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
                     width: 44,
                     height: 44,
                     decoration: BoxDecoration(
-                      color: completed
-                          ? const Color(0xFF22C55E).withValues(alpha: 0.15)
-                          : Colors.white.withValues(alpha: 0.06),
+                      color: completed ? const Color(0xFF22C55E).withValues(alpha: 0.15) : t.chipBg,
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Center(
@@ -870,13 +858,11 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
                                 style: TextStyle(
                                   fontSize: 15,
                                   fontWeight: FontWeight.w600,
-                                  color: completed
-                                      ? Colors.white.withValues(alpha: 0.4)
-                                      : Colors.white,
+                                  color: completed ? t.textMuted : t.textPrimary,
                                   decoration: completed
                                       ? TextDecoration.lineThrough
                                       : TextDecoration.none,
-                                  decorationColor: Colors.white38,
+                                  decorationColor: t.textMuted,
                                 ),
                                 child: Text(habit.nombre),
                               ),
@@ -904,15 +890,14 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
                               padding: const EdgeInsets.symmetric(
                                   horizontal: 7, vertical: 2),
                               decoration: BoxDecoration(
-                                color: Colors.white.withValues(alpha: 0.06),
+                                color: t.chipBg,
                                 borderRadius: BorderRadius.circular(6),
                               ),
                               child: Text(
                                 habit.frecuencia,
                                 style: TextStyle(
                                   fontSize: 10,
-                                  color:
-                                      Colors.white.withValues(alpha: 0.4),
+                                  color: t.textMuted,
                                 ),
                               ),
                             ),
@@ -959,8 +944,7 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
                                 decoration: BoxDecoration(
                                   shape: BoxShape.circle,
                                   border: Border.all(
-                                    color: Colors.white
-                                        .withValues(alpha: 0.2),
+                                    color: t.chipBorder,
                                     width: 2,
                                   ),
                                 ),
@@ -977,7 +961,7 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
 
   // ─── Misiones diarias ────────────────────────────────────────────
 
-  Widget _buildMisionesSection() {
+  Widget _buildMisionesSection(AppTheme t) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
       child: Column(
@@ -995,7 +979,7 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w700,
-                      color: Colors.white.withValues(alpha: 0.9),
+                      color: t.textPrimary,
                     ),
                   ),
                 ],
@@ -1060,7 +1044,7 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
                     final reclamada = _cofresReclamados.contains(quest.id);
                     return Padding(
                       padding: const EdgeInsets.only(bottom: 10),
-                      child: _buildQuestCard(
+                      child: _buildQuestCard(t,
                         quest: quest,
                         progreso: progreso,
                         completada: completada,
@@ -1075,7 +1059,7 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
     );
   }
 
-  Widget _buildQuestCard({
+  Widget _buildQuestCard(AppTheme t, {
     required DailyQuest quest,
     required int progreso,
     required bool completada,
@@ -1092,18 +1076,10 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
       duration: const Duration(milliseconds: 400),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: reclamada
-            ? Colors.white.withValues(alpha: 0.03)
-            : completada
-                ? const Color(0xFFFFD700).withValues(alpha: 0.06)
-                : Colors.white.withValues(alpha: 0.05),
+        color: reclamada ? t.overlay : completada ? const Color(0xFFFFD700).withValues(alpha: 0.06) : t.cardBg,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: reclamada
-              ? Colors.white.withValues(alpha: 0.06)
-              : completada
-                  ? const Color(0xFFFFD700).withValues(alpha: 0.3)
-                  : Colors.white.withValues(alpha: 0.08),
+          color: reclamada ? t.cardBorder : completada ? const Color(0xFFFFD700).withValues(alpha: 0.3) : t.cardBorder,
         ),
       ),
       child: Row(
@@ -1124,13 +1100,11 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
                         style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w700,
-                          color: reclamada
-                              ? Colors.white38
-                              : Colors.white,
+                          color: reclamada ? t.textMuted : t.textPrimary,
                           decoration: reclamada
                               ? TextDecoration.lineThrough
                               : null,
-                          decorationColor: Colors.white38,
+                          decorationColor: t.textMuted,
                         ),
                       ),
                     ),
@@ -1139,10 +1113,7 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
                 const SizedBox(height: 2),
                 Text(
                   quest.description,
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: Colors.white.withValues(alpha: 0.4),
-                  ),
+                  style: TextStyle(fontSize: 11, color: t.textMuted),
                 ),
                 const SizedBox(height: 8),
                 // Barra de progreso
@@ -1158,10 +1129,8 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
                     builder: (_, val, __) => LinearProgressIndicator(
                       value: val,
                       minHeight: 5,
-                      backgroundColor:
-                          Colors.white.withValues(alpha: 0.08),
-                      valueColor:
-                          AlwaysStoppedAnimation<Color>(color),
+                      backgroundColor: t.progressBg,
+                      valueColor: AlwaysStoppedAnimation<Color>(color),
                     ),
                   ),
                 ),
@@ -1184,7 +1153,7 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
               width: 40,
               height: 40,
               decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.04),
+                color: t.cardBg,
                 borderRadius: BorderRadius.circular(10),
               ),
               child: const Center(
@@ -1230,17 +1199,14 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
               width: 44,
               height: 44,
               decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.04),
+                color: t.overlay,
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.08)),
+                border: Border.all(color: t.cardBorder),
               ),
               child: Center(
                 child: Text(
                   '🔒',
-                  style: TextStyle(
-                      fontSize: 18,
-                      color: Colors.white.withValues(alpha: 0.3)),
+                  style: TextStyle(fontSize: 18, color: t.textMuted),
                 ),
               ),
             ),

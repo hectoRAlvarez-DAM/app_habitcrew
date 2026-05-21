@@ -15,7 +15,6 @@ class NotificationService {
 
   bool _initialized = false;
 
-  // Hora por defecto: 9:00 AM
   static const int defaultHour = 9;
   static const int defaultMinute = 0;
 
@@ -33,7 +32,6 @@ class NotificationService {
     _initialized = true;
   }
 
-  /// Programa una notificación diaria para un hábito a la hora configurada.
   Future<void> programarNotificacionHabito({
     required int id,
     required String nombreHabito,
@@ -55,7 +53,6 @@ class NotificationService {
       minuto,
     );
 
-    // Si la hora ya pasó hoy, programar para mañana
     if (scheduledDate.isBefore(ahora)) {
       scheduledDate = scheduledDate.add(const Duration(days: 1));
     }
@@ -78,27 +75,22 @@ class NotificationService {
       scheduledDate,
       details,
       androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+      matchDateTimeComponents: DateTimeComponents.time,
       uiLocalNotificationDateInterpretation:
           UILocalNotificationDateInterpretation.absoluteTime,
-      matchDateTimeComponents: DateTimeComponents.time,
     );
   }
 
-  /// Cancela la notificación de un hábito.
   Future<void> cancelarNotificacion(int id) async {
     if (kIsWeb || !_initialized) return;
     await _plugin.cancel(id);
   }
 
-  /// Cancela todas las notificaciones.
   Future<void> cancelarTodas() async {
     if (kIsWeb || !_initialized) return;
     await _plugin.cancelAll();
   }
 
-  // ─── Persistencia en Firestore ──────────────────────────────────
-
-  /// Guarda la configuración de notificación de un hábito en Firestore.
   Future<void> guardarConfigNotificacion({
     required String habitId,
     required bool activa,
@@ -122,7 +114,6 @@ class NotificationService {
     });
   }
 
-  /// Carga y reprograma todas las notificaciones activas del usuario.
   Future<void> reprogramarTodasLasNotificaciones() async {
     if (kIsWeb || !_initialized) return;
 
@@ -145,8 +136,6 @@ class NotificationService {
 
       final hora = notif['hora'] as int? ?? defaultHour;
       final minuto = notif['minuto'] as int? ?? defaultMinute;
-
-      // Usar hashCode del ID como identificador numérico único
       final notifId = doc.id.hashCode.abs() % 100000;
 
       await programarNotificacionHabito(

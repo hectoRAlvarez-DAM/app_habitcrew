@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(flutter --version)",
+      "Bash(java *)",
+      "Bash(flutter doctor *)",
+      "Read(//c/Users/hecto/AppData/Local/Android/sdk/**)",
+      "Bash(flutter build *)",
+      "Bash(flutter pub *)",
+      "Bash(dart --version)",
+      "Bash(where java *)"
+    ]
+  }
+}

@@ -108,7 +108,6 @@ class AchievementDefinition {
     AchievementDefinition(id: 'f8',  title: 'Millonario local',        description: 'Ten 20.000 monedas al mismo tiempo',      icon: Icons.stars,                  categoryId: '6', targetValue: 20000, coinReward: 1200, conditionType: 'monedas_actuales'),
 
     // ── 7. FIDELIDAD (días desde registro) ────────────────────────────
-    AchievementDefinition(id: 'login', title: 'Primer inicio de sesión', description: 'Inicia sesión en HabitCrew por primera vez', icon: Icons.login, categoryId: '7', targetValue: 1, coinReward: 10, conditionType: 'primer_sesion'),
     AchievementDefinition(id: 'g1',  title: 'Bienvenido',    description: 'Lleva 1 día usando HabitCrew',                 icon: Icons.waving_hand,       categoryId: '7', targetValue: 1,    coinReward: 25,   conditionType: 'dias_registro'),
     AchievementDefinition(id: 'g2',  title: 'Tres días',     description: 'Lleva 3 días usando HabitCrew',                icon: Icons.calendar_view_day, categoryId: '7', targetValue: 3,    coinReward: 50,   conditionType: 'dias_registro'),
     AchievementDefinition(id: 'g3',  title: 'Una semana',    description: 'Lleva 7 días usando HabitCrew',                icon: Icons.calendar_today,    categoryId: '7', targetValue: 7,    coinReward: 75,   conditionType: 'dias_registro'),
