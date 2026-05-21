@@ -200,9 +200,7 @@ class _ProfileState extends State<Profile> {
                       gradient: LinearGradient(
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
-                        colors: isContrast
-                            ? [const Color(0xFFE8F5E9), const Color(0xFFC8E6C9)]
-                            : _getBannerColors(),
+                        colors: _getBannerColors(),
                       ),
                       borderRadius: const BorderRadius.only(
                         bottomLeft: Radius.circular(16),
@@ -220,30 +218,28 @@ class _ProfileState extends State<Profile> {
                             child: CustomPaint(painter: DiscordPatternPainter(isContrast: isContrast)),
                           ),
                         ),
-                        if (!isContrast) ...[
-                          if (_bannerEquipado == 'Beta')
-                            Center(
-                              child: Text(
-                                'BETA',
-                                style: TextStyle(
-                                  fontSize: 48,
-                                  fontWeight: FontWeight.w900,
-                                  color: Colors.white.withValues(alpha: 0.15),
-                                  letterSpacing: 16,
-                                ),
-                              ),
-                            )
-                          else if (_bannerEquipado != null)
-                            Center(
-                              child: Opacity(
-                                opacity: 0.3,
-                                child: Text(
-                                  ProfileThemeService.getBanner(_bannerEquipado)?.emoji ?? '',
-                                  style: const TextStyle(fontSize: 80),
-                                ),
+                        if (_bannerEquipado == 'Beta')
+                          Center(
+                            child: Text(
+                              'BETA',
+                              style: TextStyle(
+                                fontSize: 48,
+                                fontWeight: FontWeight.w900,
+                                color: Colors.white.withValues(alpha: 0.15),
+                                letterSpacing: 16,
                               ),
                             ),
-                          ],
+                          )
+                        else if (_bannerEquipado != null)
+                          Center(
+                            child: Opacity(
+                              opacity: 0.3,
+                              child: Text(
+                                ProfileThemeService.getBanner(_bannerEquipado)?.emoji ?? '',
+                                style: const TextStyle(fontSize: 80),
+                              ),
+                            ),
+                          ),
                         // Botón editar perfil
                       ],
                     ),
@@ -527,9 +523,7 @@ class _ProfileState extends State<Profile> {
                 ),
               ),
 
-              const SizedBox(height: 30),
-
-              const SizedBox(height: 20),
+              const SizedBox(height: 100),
             ],
           ),
         ),
