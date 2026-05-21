@@ -84,11 +84,13 @@ class _AchievementsPageState extends State<AchievementsPage> {
   }
 
   int get _longestStreak {
-    final constancia = _categories.where((c) => c.id == '1').firstOrNull;
-    if (constancia == null) return 0;
-    return constancia.achievements
-        .where((a) => a.isUnlocked)
-        .fold(0, (s, a) => a.currentValue > s ? a.currentValue : s);
+    // Solo considera logros de tipo 'racha' (no total_completados ni otros)
+    for (final cat in _categories) {
+      for (final a in cat.achievements) {
+        if (a.conditionType == 'racha') return a.currentValue;
+      }
+    }
+    return 0;
   }
 
   // Categorías filtradas según el modo activo

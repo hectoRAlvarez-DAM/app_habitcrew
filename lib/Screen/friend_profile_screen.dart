@@ -264,9 +264,7 @@ class _FriendProfileScreenState extends State<FriendProfileScreen> {
                                 ),
                                 _buildStat(
                                   'Mejor racha',
-                                  _habitos.isEmpty
-                                      ? '0'
-                                      : '${_habitos.map((h) => (h['recordRacha'] as num?)?.toInt() ?? 0).reduce((a, b) => a > b ? a : b)}',
+                                  '${(_userData?['recordRachaGlobal'] as num?)?.toInt() ?? 0}',
                                   '🔥',
                                 ),
                               ],

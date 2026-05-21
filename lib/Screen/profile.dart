@@ -38,6 +38,7 @@ class _ProfileState extends State<Profile> {
   final HabitService _habitService = HabitService();
   List<Habit> _habitos = [];
   StreamSubscription<List<Habit>>? _habitSub;
+  int _mejorRacha = 0;
 
   @override
   void initState() {
@@ -50,11 +51,13 @@ class _ProfileState extends State<Profile> {
       onError: (e) => debugPrint('Error stream hábitos perfil: $e'),
       cancelOnError: false,
     );
-    // Stream para insignias, banner y avatar en tiempo real
+    // Stream para insignias, banner, avatar y racha global en tiempo real
     _userSub = _achievementService.streamUsuario().listen((doc) {
       if (!mounted) return;
       final data = doc.data() as Map<String, dynamic>?;
       if (data == null) return;
+      final actual = (data['rachaGlobalActual'] as num?)?.toInt() ?? 0;
+      final record = (data['recordRachaGlobal'] as num?)?.toInt() ?? 0;
       setState(() {
         _insigniasEquipadas = List<String>.from(data['insigniasEquipadas'] ?? []);
         _logrosDesbloqueados = List<String>.from(data['logrosDesbloqueados'] ?? []);
@@ -64,6 +67,7 @@ class _ProfileState extends State<Profile> {
         _fotoPerfil = data['fotoPerfil'] as String?;
         _bio = data['bio'] as String? ?? '';
         _userName = data['nom'] as String? ?? _userName;
+        _mejorRacha = actual > record ? actual : record;
       });
     });
   }
@@ -74,10 +78,6 @@ class _ProfileState extends State<Profile> {
     _userSub?.cancel();
     super.dispose();
   }
-
-  int get _mejorRacha => _habitos.isEmpty
-      ? 0
-      : _habitos.map((h) => h.rachaActual).reduce((a, b) => a > b ? a : b);
 
   String _formatearFecha(DateTime fecha) {
     const meses = [
