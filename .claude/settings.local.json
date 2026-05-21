@@ -8,7 +8,9 @@
       "Bash(flutter build *)",
       "Bash(flutter pub *)",
       "Bash(dart --version)",
-      "Bash(where java *)"
+      "Bash(where java *)",
+      "Bash(dart analyze *)",
+      "Bash(grep -E \"^error|^warning - lib\\\\\\\\\\\\\\\\Screen\")"
     ]
   }
 }

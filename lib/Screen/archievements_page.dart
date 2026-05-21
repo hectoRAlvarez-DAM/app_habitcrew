@@ -251,6 +251,7 @@ class _AchievementsPageState extends State<AchievementsPage> {
                     _buildFilterBar(),
                     const SizedBox(height: 12),
                     ..._filteredCategories.map(_buildCategoryCard),
+                    const SizedBox(height: 100),
                   ],
                 ),
               ),
