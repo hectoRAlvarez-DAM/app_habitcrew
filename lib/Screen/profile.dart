@@ -243,7 +243,7 @@ class _ProfileState extends State<Profile> {
                                 ),
                               ),
                             ),
-                          ),
+                          ],
                         // Botón editar perfil
                       ],
                     ),
