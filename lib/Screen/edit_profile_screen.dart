@@ -91,10 +91,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       final nombre = _nombreController.text.trim();
       final bio = _bioController.text.trim();
 
-      await FirebaseFirestore.instance
-          .collection('usuaris')
-          .doc(uid)
-          .update({
+      await FirebaseFirestore.instance.collection('usuaris').doc(uid).update({
         'nom': nombre,
         'bio': bio,
         'bannerEquipado': _banner,
@@ -105,8 +102,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-              content: Text('Error al guardar'),
-              backgroundColor: Colors.red),
+            content: Text('Error al guardar'),
+            backgroundColor: Colors.red,
+          ),
         );
       }
     } finally {
@@ -118,7 +116,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
   Future<void> _subirFoto(ImageSource source) async {
     setState(() => _subiendoFoto = true);
-    final resultado = await _photoService.seleccionarYSubirFoto(source: source);
+    final resultado = await _photoService.seleccionarYSubirFoto(
+      source: source,
+      context: context,
+    );
     if (mounted) {
       setState(() {
         _subiendoFoto = false;
@@ -127,7 +128,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       if (resultado == null) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('No se pudo subir la foto. Prueba con una imagen más pequeña.'),
+            content: Text(
+              'No se pudo subir la foto. Prueba con una imagen más pequeña.',
+            ),
             backgroundColor: Colors.red,
           ),
         );
@@ -152,7 +155,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       context: context,
       backgroundColor: const Color(0xFF1E1E2E),
       shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
       builder: (ctx) => Padding(
         padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
         child: Column(
@@ -224,7 +228,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       context: context,
       backgroundColor: const Color(0xFF1E1E2E),
       shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setModal) => Padding(
           padding: const EdgeInsets.all(20),
@@ -257,8 +262,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                       height: 60,
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
-                          colors: theme?.gradientColors ??
-                              [Colors.grey.shade800],
+                          colors:
+                              theme?.gradientColors ?? [Colors.grey.shade800],
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
                         ),
@@ -352,7 +357,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                                     bottomRight: Radius.circular(16),
                                   ),
                                   child: CustomPaint(
-                                      painter: _BannerPatternPainter()),
+                                    painter: _BannerPatternPainter(),
+                                  ),
                                 ),
                               ),
                               // Texto/emoji del banner
@@ -363,8 +369,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                                     style: TextStyle(
                                       fontSize: 48,
                                       fontWeight: FontWeight.w900,
-                                      color: Colors.white
-                                          .withValues(alpha: 0.15),
+                                      color: Colors.white.withValues(
+                                        alpha: 0.15,
+                                      ),
                                       letterSpacing: 16,
                                     ),
                                   ),
@@ -374,8 +381,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                                   child: Opacity(
                                     opacity: 0.25,
                                     child: Text(
-                                      ProfileThemeService.getBanner(_banner)
-                                              ?.emoji ??
+                                      ProfileThemeService.getBanner(
+                                            _banner,
+                                          )?.emoji ??
                                           '',
                                       style:
                                           TextStyle(fontSize: 80),
@@ -388,10 +396,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                                 right: 12,
                                 child: Container(
                                   padding: const EdgeInsets.symmetric(
-                                      horizontal: 10, vertical: 5),
+                                    horizontal: 10,
+                                    vertical: 5,
+                                  ),
                                   decoration: BoxDecoration(
-                                    color:
-                                        Colors.black.withValues(alpha: 0.5),
+                                    color: Colors.black.withValues(alpha: 0.5),
                                     borderRadius: BorderRadius.circular(20),
                                   ),
                                   child: Row(
@@ -418,10 +427,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                                   child: Container(
                                     padding: const EdgeInsets.all(8),
                                     decoration: BoxDecoration(
-                                      color: Colors.black
-                                          .withValues(alpha: 0.4),
-                                      borderRadius:
-                                          BorderRadius.circular(10),
+                                      color: Colors.black.withValues(
+                                        alpha: 0.4,
+                                      ),
+                                      borderRadius: BorderRadius.circular(10),
                                     ),
                                     child: Icon(Icons.arrow_back,
                                         color: Colors.white, size: 20),
@@ -446,11 +455,14 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                                 decoration: BoxDecoration(
                                   shape: BoxShape.circle,
                                   border: Border.all(
-                                      color: Colors.white, width: 4),
+                                    color: Colors.white,
+                                    width: 4,
+                                  ),
                                   boxShadow: [
                                     BoxShadow(
-                                      color: Colors.black
-                                          .withValues(alpha: 0.3),
+                                      color: Colors.black.withValues(
+                                        alpha: 0.3,
+                                      ),
                                       blurRadius: 10,
                                     ),
                                   ],
@@ -467,8 +479,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                                           ),
                                         )
                                       : _foto != null
-                                          ? _buildFotoWidget(_foto!, fit: BoxFit.cover)
-                                          : _buildAvatarFallback(),
+                                      ? _buildFotoWidget(
+                                          _foto!,
+                                          fit: BoxFit.cover,
+                                        )
+                                      : _buildAvatarFallback(),
                                 ),
                               ),
                               // Icono cámara
@@ -483,7 +498,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                                       shape: BoxShape.circle,
                                       color: const Color(0xFF22C55E),
                                       border: Border.all(
-                                          color: Colors.white, width: 2),
+                                        color: Colors.white,
+                                        width: 2,
+                                      ),
                                     ),
                                     child: Icon(Icons.camera_alt,
                                         color: Colors.white, size: 13),
@@ -532,8 +549,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                               color: _t.textPrimary, fontSize: 15),
                           maxLength: 150,
                           maxLines: 3,
-                          decoration: _inputDeco(
-                              'Cuéntanos algo sobre ti...'),
+                          decoration: _inputDeco('Cuéntanos algo sobre ti...'),
                         ),
 
                         const SizedBox(height: 20),
@@ -548,24 +564,26 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                             style: ElevatedButton.styleFrom(
                               backgroundColor: const Color(0xFF22C55E),
                               foregroundColor: Colors.white,
-                              padding:
-                                  const EdgeInsets.symmetric(vertical: 16),
+                              padding: const EdgeInsets.symmetric(vertical: 16),
                               shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(14)),
+                                borderRadius: BorderRadius.circular(14),
+                              ),
                             ),
                             child: _guardando
                                 ? const SizedBox(
                                     width: 20,
                                     height: 20,
                                     child: CircularProgressIndicator(
-                                        color: Colors.white,
-                                        strokeWidth: 2),
+                                      color: Colors.white,
+                                      strokeWidth: 2,
+                                    ),
                                   )
                                 : Text(
                                     'Guardar cambios',
                                     style: TextStyle(
-                                        fontSize: 15,
-                                        fontWeight: FontWeight.bold),
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.bold,
+                                    ),
                                   ),
                           ),
                         ),
@@ -595,8 +613,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         );
       }
       // Fallback para URLs antiguas
-      return Image.network(foto, fit: fit,
-          errorBuilder: (_, __, ___) => _buildAvatarFallback());
+      return Image.network(
+        foto,
+        fit: fit,
+        errorBuilder: (_, __, ___) => _buildAvatarFallback(),
+      );
     } catch (_) {
       return _buildAvatarFallback();
     }
@@ -676,13 +697,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding:
-            const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
         decoration: BoxDecoration(
           color: color.withValues(alpha: 0.08),
           borderRadius: BorderRadius.circular(12),
-          border:
-              Border.all(color: color.withValues(alpha: 0.2)),
+          border: Border.all(color: color.withValues(alpha: 0.2)),
         ),
         child: Row(
           children: [
@@ -708,7 +727,10 @@ class _BannerPatternPainter extends CustomPainter {
       ..strokeWidth = 1;
     for (double i = -size.height; i < size.width + size.height; i += 30) {
       canvas.drawLine(
-          Offset(i, 0), Offset(i + size.height, size.height), paint);
+        Offset(i, 0),
+        Offset(i + size.height, size.height),
+        paint,
+      );
     }
   }
 

@@ -243,26 +243,8 @@ class _ProfileState extends State<Profile> {
                                 ),
                               ),
                             ),
-                        ],
-                        Positioned(
-                          top: 12,
-                          right: 12,
-                          child: GestureDetector(
-                            onTap: _abrirEditorPerfil,
-                            child: Container(
-                              padding: const EdgeInsets.all(8),
-                              decoration: BoxDecoration(
-                                color: isContrast
-                                    ? Colors.white.withValues(alpha: 0.8)
-                                    : Colors.black.withValues(alpha: 0.4),
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              child: Icon(Icons.edit,
-                                  color: isContrast ? const Color(0xFF333333) : Colors.white,
-                                  size: 18),
-                            ),
                           ),
-                        ),
+                        // Botón editar perfil
                       ],
                     ),
                   ),
