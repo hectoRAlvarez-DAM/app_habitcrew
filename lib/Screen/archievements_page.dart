@@ -266,19 +266,18 @@ class _AchievementsPageState extends State<AchievementsPage> {
       ('desbloqueados', 'Desbloqueados', Icons.lock_open),
       ('por_reclamar', 'Por reclamar', Icons.redeem),
     ];
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: Row(
-        children: filters.map((f) {
-          final isSelected = _filterMode == f.$1;
-          return Padding(
+    return Row(
+      children: filters.map((f) {
+        final isSelected = _filterMode == f.$1;
+        return Expanded(
+          child: Padding(
             padding: const EdgeInsets.only(right: 8),
             child: GestureDetector(
               onTap: () => setState(() => _filterMode = f.$1),
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 200),
                 padding:
-                    const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                    const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
                 decoration: BoxDecoration(
                   color: isSelected
                       ? const Color(0xFF22C55E).withOpacity(0.25)
@@ -291,6 +290,7 @@ class _AchievementsPageState extends State<AchievementsPage> {
                   ),
                 ),
                 child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Icon(
@@ -300,25 +300,28 @@ class _AchievementsPageState extends State<AchievementsPage> {
                           ? const Color(0xFF22C55E)
                           : Colors.white60,
                     ),
-                    const SizedBox(width: 6),
-                    Text(
-                      f.$2,
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight:
-                            isSelected ? FontWeight.bold : FontWeight.normal,
-                        color: isSelected
-                            ? const Color(0xFF22C55E)
-                            : Colors.white60,
+                    const SizedBox(width: 4),
+                    Flexible(
+                      child: Text(
+                        f.$2,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight:
+                              isSelected ? FontWeight.bold : FontWeight.normal,
+                          color: isSelected
+                              ? const Color(0xFF22C55E)
+                              : Colors.white60,
+                        ),
                       ),
                     ),
                   ],
                 ),
               ),
             ),
-          );
-        }).toList(),
-      ),
+          ),
+        );
+      }).toList(),
     );
   }
 
