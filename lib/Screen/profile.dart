@@ -46,11 +46,14 @@ class _ProfileState extends State<Profile> {
   int _mejorRacha = 0;
   int _numAmigos = 0;
   int _totalHabitosCompletados = 0;
+  int _totalLogros = 0;
+  int _logrosDesbloqueadosReal = 0;
 
   @override
   void initState() {
     super.initState();
     _cargarDatosUsuario();
+    _cargarTotalLogros();
     _habitSub = _habitService.obtenerHabitos().listen(
       (habitos) {
         if (mounted) setState(() => _habitos = habitos);
@@ -96,6 +99,26 @@ class _ProfileState extends State<Profile> {
       'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'
     ];
     return '${meses[fecha.month - 1]} ${fecha.year}';
+  }
+
+  Future<void> _cargarTotalLogros() async {
+    try {
+      final (categories, _) =
+          await AchievementService.instance.loadUserAchievements();
+      if (!mounted) return;
+      int total = 0;
+      int unlocked = 0;
+      for (final c in categories) {
+        total += (c.totalAchievements as num).toInt();
+        unlocked += (c.unlockedAchievements as num).toInt();
+      }
+      setState(() {
+        _totalLogros = total;
+        _logrosDesbloqueadosReal = unlocked;
+      });
+    } catch (e) {
+      debugPrint('Error cargando total logros: $e');
+    }
   }
 
   Future<void> _cargarDatosUsuario() async {
@@ -544,27 +567,28 @@ class _ProfileState extends State<Profile> {
                           ],
                         ),
                         const SizedBox(height: 16),
-                        RichText(
-                          text: TextSpan(
-                            children: [
-                              TextSpan(
-                                text: '${_logrosDesbloqueados.length}',
-                                style: TextStyle(
-                                  fontSize: 36,
-                                  fontWeight: FontWeight.bold,
-                                  color: const Color(0xFF22C55E),
-                                ),
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.baseline,
+                          textBaseline: TextBaseline.alphabetic,
+                          children: [
+                            Text(
+                              '$_logrosDesbloqueadosReal',
+                              style: const TextStyle(
+                                fontSize: 36,
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFF22C55E),
                               ),
-                              TextSpan(
-                                text: ' / 73',
+                            ),
+                            if (_totalLogros > 0)
+                              Text(
+                                ' / $_totalLogros',
                                 style: TextStyle(
                                   fontSize: 18,
                                   fontWeight: FontWeight.w500,
                                   color: _textSecondary(isContrast),
                                 ),
                               ),
-                            ],
-                          ),
+                          ],
                         ),
                         const SizedBox(height: 4),
                         Text(
@@ -578,7 +602,9 @@ class _ProfileState extends State<Profile> {
                         ClipRRect(
                           borderRadius: BorderRadius.circular(4),
                           child: LinearProgressIndicator(
-                            value: (_logrosDesbloqueados.length / 73).clamp(0.0, 1.0),
+                            value: _totalLogros > 0
+                                ? (_logrosDesbloqueadosReal / _totalLogros).clamp(0.0, 1.0)
+                                : 0.0,
                             minHeight: 6,
                             backgroundColor: isContrast
                                 ? const Color(0xFFDDDDDD)

@@ -228,14 +228,11 @@ class _HabitDetailScreenState extends State<HabitDetailScreen> {
                   child: Padding(
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceAround,
                       children: [
-                        _buildStat('Racha', '${widget.habit.rachaActual}🔥'),
-                        _buildStat(
-                            'Récord', '${widget.habit.recordRacha} días'),
-                        _buildStat(
-                            'Total', '${widget.habit.totalCompletados}✅'),
-                        _buildStat('Freq.', widget.habit.frecuencia),
+                        Expanded(child: _buildStat('Racha', '${widget.habit.rachaActual}🔥')),
+                        Expanded(child: _buildStat('Récord', '${widget.habit.recordRacha} días')),
+                        Expanded(child: _buildStat('Total', '${widget.habit.totalCompletados}✅')),
+                        Expanded(child: _buildStat('Freq.', widget.habit.frecuencia)),
                       ],
                     ),
                   ),
@@ -261,25 +258,27 @@ class _HabitDetailScreenState extends State<HabitDetailScreen> {
                           : Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      'Comparte este código con tus compañeros',
-                                      style: TextStyle(
-                                          color: t.textMuted, fontSize: 12),
-                                    ),
-                                    const SizedBox(height: 8),
-                                    Text(
-                                      _codigoGrupo!,
-                                      style: TextStyle(
-                                        color: Color(0xFF22C55E),
-                                        fontSize: 28,
-                                        fontWeight: FontWeight.bold,
-                                        letterSpacing: 6,
+                                Flexible(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'Comparte este código con tus compañeros',
+                                        style: TextStyle(
+                                            color: t.textMuted, fontSize: 12),
                                       ),
-                                    ),
-                                  ],
+                                      const SizedBox(height: 8),
+                                      Text(
+                                        _codigoGrupo!,
+                                        style: TextStyle(
+                                          color: Color(0xFF22C55E),
+                                          fontSize: 28,
+                                          fontWeight: FontWeight.bold,
+                                          letterSpacing: 6,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 ),
                                 GestureDetector(
                                   onTap: () {
@@ -552,14 +551,19 @@ class _HabitDetailScreenState extends State<HabitDetailScreen> {
   Widget _buildStat(String label, String value) {
     final t = _t;
     return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         Text(value,
+            textAlign: TextAlign.center,
             style: TextStyle(
-                fontSize: 16,
+                fontSize: 15,
                 fontWeight: FontWeight.bold,
                 color: t.textPrimary)),
         const SizedBox(height: 2),
-        Text(label, style: TextStyle(fontSize: 11, color: Colors.grey[400])),
+        Text(label,
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 11, color: Colors.grey[400])),
       ],
     );
   }
