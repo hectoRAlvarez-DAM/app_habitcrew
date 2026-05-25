@@ -155,6 +155,54 @@ class HabitService {
     });
   }
 
+  // ── HELPERS DE PERÍODO ────────────────────────────────────────────────────
+
+
+  /// Devuelve true si [fecha] estuvo en el período ANTERIOR a ahora.
+  /// Para diario: ayer. Para semanal: la semana pasada. Para mensual: el mes pasado.
+  bool _periodoAnterior(DateTime fecha, String frecuencia, DateTime ahora) {
+    switch (frecuencia.toLowerCase()) {
+      case 'semanal':
+        final inicioSemanaActual = DateTime(
+          ahora.year, ahora.month, ahora.day,
+        ).subtract(Duration(days: ahora.weekday - 1));
+        final inicioSemanaAnterior =
+            inicioSemanaActual.subtract(const Duration(days: 7));
+        final inicioSemanaFecha = DateTime(
+          fecha.year, fecha.month, fecha.day,
+        ).subtract(Duration(days: fecha.weekday - 1));
+        return inicioSemanaFecha == inicioSemanaAnterior;
+      case 'mensual':
+        final mesAnterior = DateTime(ahora.year, ahora.month - 1);
+        return fecha.year == mesAnterior.year &&
+            fecha.month == mesAnterior.month;
+      default: // diario
+        final ayer = DateTime(ahora.year, ahora.month, ahora.day)
+            .subtract(const Duration(days: 1));
+        return fecha.year == ayer.year &&
+            fecha.month == ayer.month &&
+            fecha.day == ayer.day;
+    }
+  }
+
+  /// Calcula la fecha a la que retroceder fechaUltimoCompletado al desmarcar.
+  /// Devuelve null si la racha llega a 0.
+  DateTime? _fechaRetroceso(String frecuencia, DateTime ahora) {
+    switch (frecuencia.toLowerCase()) {
+      case 'semanal':
+        // Retrocede al inicio de la semana anterior
+        final inicioSemanaActual = DateTime(
+          ahora.year, ahora.month, ahora.day,
+        ).subtract(Duration(days: ahora.weekday - 1));
+        return inicioSemanaActual.subtract(const Duration(days: 1)); // último día semana anterior
+      case 'mensual':
+        // Retrocede al último día del mes anterior
+        return DateTime(ahora.year, ahora.month, 0);
+      default:
+        return ahora.subtract(const Duration(days: 1));
+    }
+  }
+
   /// Alterna el estado completado/no completado de un hábito para el período actual.
   Future<void> toggleCompletado(Habit habit) async {
     final ref = _habitsRef;
@@ -170,26 +218,28 @@ class HabitService {
       if (habit.rachaActual <= 1) {
         await docRef.update({'fechaUltimoCompletado': null, 'rachaActual': 0});
       } else {
-        final yesterday = ahora.subtract(const Duration(days: 1));
+        final fechaRetroceso = _fechaRetroceso(habit.frecuencia, ahora);
         await docRef.update({
-          'fechaUltimoCompletado': Timestamp.fromDate(yesterday),
+          'fechaUltimoCompletado': fechaRetroceso != null
+              ? Timestamp.fromDate(fechaRetroceso)
+              : null,
           'rachaActual': habit.rachaActual - 1,
         });
       }
-      // completadoHoy garantiza que totalCompletados >= 1 en Firestore
       await docRef.update({'totalCompletados': FieldValue.increment(-1)});
       await userRef.update({
         'totalHabitosCompletados': FieldValue.increment(-1),
       });
-      // Eliminar del historial el registro de hoy
-      final hoyStr = '${ahora.year}-${ahora.month}-${ahora.day}';
+
+      // Eliminar del historial el registro del período actual
+      final periodoStr = _periodoStr(ahora, habit.frecuencia);
       final snap = await docRef.get();
       final historial =
           List<Map<String, dynamic>>.from(snap.data()?['historial'] ?? []);
       historial.removeWhere((e) {
         final f = (e['fecha'] as Timestamp?)?.toDate();
         if (f == null) return false;
-        return '${f.year}-${f.month}-${f.day}' == hoyStr;
+        return _periodoStr(f, habit.frecuencia) == periodoStr;
       });
       await docRef.update({'historial': historial});
 
@@ -229,11 +279,11 @@ class HabitService {
       int nuevaRacha = 1;
 
       if (habit.fechaUltimoCompletado != null) {
-        final hoy = DateTime(ahora.year, ahora.month, ahora.day);
-        final ayer = hoy.subtract(const Duration(days: 1));
-        final ultimo = habit.fechaUltimoCompletado!;
-        final ultimoDia = DateTime(ultimo.year, ultimo.month, ultimo.day);
-        if (ultimoDia == ayer) nuevaRacha = habit.rachaActual + 1;
+        // La racha continúa si el último completado fue en el período anterior
+        if (_periodoAnterior(
+            habit.fechaUltimoCompletado!, habit.frecuencia, ahora)) {
+          nuevaRacha = habit.rachaActual + 1;
+        }
       }
 
       final nuevoRecord =
@@ -289,6 +339,20 @@ class HabitService {
 
       // Comprobar si todos los hábitos de hoy están completados
       _comprobarDiaPerfecto();
+    }
+  }
+
+  /// Genera una clave de período para comparar entradas del historial.
+  String _periodoStr(DateTime fecha, String frecuencia) {
+    switch (frecuencia.toLowerCase()) {
+      case 'semanal':
+        // Lunes de la semana como clave
+        final lunes = fecha.subtract(Duration(days: fecha.weekday - 1));
+        return '${lunes.year}-${lunes.month}-${lunes.day}';
+      case 'mensual':
+        return '${fecha.year}-${fecha.month}';
+      default:
+        return '${fecha.year}-${fecha.month}-${fecha.day}';
     }
   }
 
